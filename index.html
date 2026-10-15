@@ -1,0 +1,1199 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pastipet</title>
+<meta name="description" content="Pastillero para mascotas: medicamentos, horarios y avisos para perros y gatos.">
+<meta name="theme-color" content="#FCF3EA">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pastipet">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>html{-webkit-text-size-adjust:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap">
+<style>
+/* Concepto: el pastillero de Kayla en la mesa de la cocina. Tema claro y cálido elegido a propósito (un solo tema).
+   Cabecera con la foto de la mascota y su organizador semanal; dosis como tiras de blíster; perfil con curva de peso.
+   Texto alineado a la izquierda, una columna, máx. 600px. Verde azulado = acción y "dado"; morado = día por medio; girasol = la mascota. */
+:root{
+  --bg:#FCF3EA; --surface:#FFFFFF; --ink:#2B2420; --muted:#7A6A60; --rule:#F0E1D4;
+  --teal:#0E7462; --teal-ink:#FFFFFF; --teal-soft:#DDF0EA; --teal-lid:#E9F5F1;
+  --plum:#7646A3; --plum-soft:#F1E7FA;
+  --sun:#F2A23A; --sun-soft:#FDEBD2;
+  --amber:#B0520A; --amber-soft:#FCE5D1;
+  --foil:#F3E9E0; --pocket:inset 0 2px 4px rgba(90,60,40,.16), inset 0 -1px 0 rgba(255,255,255,.9);
+  --lift:0 1px 2px rgba(90,60,40,.06), 0 6px 18px rgba(90,60,40,.07);
+  --display:"Fredoka", "Avenir Next Rounded", "Nunito", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;padding:0;font-variant-numeric:tabular-nums}
+.gut{padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.wrap{max-width:600px;margin:0 auto}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;font-weight:600;letter-spacing:0}
+p{margin:0}
+
+/* Cabecera */
+.top{padding-block:18px 6px;display:flex;flex-direction:column;gap:16px}
+.who{display:flex;align-items:center;gap:14px}
+button.photo{border:0;padding:0}
+.photo{width:68px;height:68px;border-radius:50%;flex:none;background:var(--sun-soft);color:var(--sun);display:grid;place-items:center;
+  box-shadow:0 0 0 3px var(--surface), 0 0 0 6px var(--sun);overflow:hidden;margin:6px}
+.photo{position:relative;overflow:visible}
+.photo img{border-radius:50%;width:100%;height:100%;object-fit:cover;display:block}
+.photo svg{width:36px;height:36px}
+.cam{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 2px var(--surface)}
+.cam svg{width:15px;height:15px}
+.who .txt{min-width:0}
+.dlist{margin:0;display:flex;flex-direction:column}
+.dlist div{padding:10px 0;border-top:1px dashed var(--rule);display:flex;flex-direction:column;gap:2px}
+.dlist div:first-child{border-top:0;padding-top:0}
+.dlist dt{font-size:.85rem;color:var(--muted);font-weight:700}
+.dlist dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom, 0px));z-index:12;background:var(--ink);color:#fff;font-weight:700;padding:10px 18px;border-radius:99px;box-shadow:var(--lift);white-space:nowrap}
+.who h1{font-size:2rem;line-height:1.05}
+.who p{color:var(--muted)}
+.organizer{display:grid;grid-template-columns:20px repeat(7,1fr) 20px;gap:5px;align-items:stretch}
+.organizer .nav{border:0;background:transparent;color:var(--muted);font-size:1.3rem;padding:0}
+.lid{position:relative;overflow:hidden;border:0;border-radius:14px 14px 10px 10px;height:66px;padding:8px 0 0;min-width:0;
+  background:var(--teal-lid);color:var(--ink);display:flex;flex-direction:column;align-items:center;box-shadow:inset 0 -2px 0 rgba(14,116,98,.08)}
+.lid .fill{position:absolute;left:0;right:0;bottom:0;background:color-mix(in srgb, var(--teal) 22%, var(--teal-lid));transition:height .35s ease}
+.lid .dl,.lid .dn{position:relative}
+.lid .dl{font-size:.78rem;font-weight:700;color:var(--muted)}
+.lid .dn{font-family:var(--display);font-size:1.25rem;font-weight:600}
+.lid.today .dn{color:var(--teal)}
+.lid[aria-pressed="true"]{background:var(--teal);color:var(--teal-ink)}
+.lid[aria-pressed="true"] .dl,.lid[aria-pressed="true"] .dn{color:var(--teal-ink)}
+.lid[aria-pressed="true"] .fill{background:color-mix(in srgb, #000 16%, var(--teal))}
+
+.app{display:flex;flex-direction:column;gap:22px;padding-block:14px calc(92px + env(safe-area-inset-bottom, 0px))}
+.view{display:flex;flex-direction:column;gap:22px}
+
+/* Pestañas */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);box-shadow:0 -1px 0 var(--rule), 0 -6px 18px rgba(90,60,40,.05);padding-bottom:env(safe-area-inset-bottom, 0px)}
+.tabbar .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+.tabbar button{border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 10px;color:var(--muted);font-size:.8rem;font-weight:700;min-width:0}
+.tabbar button > span:not(.ico){max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}
+.tabbar svg{width:24px;height:24px}
+.tabbar button[aria-selected="true"]{color:var(--teal)}
+
+/* Día */
+.dayhead{display:flex;flex-direction:column;gap:8px}
+.dayhead h2{font-size:1.5rem}
+.dayhead p{color:var(--muted)}
+.dayhead p b{color:var(--ink)}
+.dayhead p.late b{color:var(--amber)}
+.track{height:8px;border-radius:99px;background:var(--rule);overflow:hidden}
+.track span{display:block;height:100%;background:var(--teal);border-radius:99px;transition:width .35s ease}
+
+.slot{display:flex;flex-direction:column;gap:8px}
+.slot h3{display:flex;align-items:baseline;gap:8px;font-size:1.3rem}
+.slot h3 small{font-family:var(--body);font-size:.92rem;font-weight:400;color:var(--muted)}
+.blister{list-style:none;margin:0;padding:0;background:var(--surface);border-radius:20px;overflow:hidden;box-shadow:var(--lift)}
+.dose{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;padding:12px 16px 12px 12px}
+.dose + .dose{border-top:1px dashed var(--rule)}
+.dose .info{min-width:0}
+.dose .nm{font-weight:700;overflow-wrap:anywhere}
+.dose .sub{color:var(--muted);font-size:.92rem;overflow-wrap:anywhere}
+.alt{color:var(--plum);font-weight:700;white-space:nowrap}
+.alt::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--plum);margin:0 5px 1px 0;vertical-align:middle}
+.pocket{width:48px;height:48px;border-radius:50%;border:0;background:var(--foil);box-shadow:var(--pocket);display:grid;place-items:center;padding:0;position:relative}
+.pocket .cap{width:26px;height:13px;border-radius:7px;background:linear-gradient(90deg, var(--teal) 50%, #BFE3D8 50%);box-shadow:0 1px 2px rgba(0,0,0,.2);transform:rotate(-35deg);transition:transform .25s ease, opacity .2s ease}
+.pocket.altp .cap{background:linear-gradient(90deg, var(--plum) 50%, #DCC8EE 50%)}
+.pocket svg{position:absolute;width:22px;height:22px;color:var(--teal);opacity:0;transition:opacity .2s ease}
+.pocket.on{background:var(--teal-soft)}
+.pocket.on .cap{opacity:0;transform:rotate(-35deg) translateY(-14px) scale(.7)}
+.pocket.on svg{opacity:1}
+.pocket:disabled{cursor:default;opacity:.55}
+.state{font-size:.84rem;font-weight:700;white-space:nowrap}
+.state.done{color:var(--teal)}
+.state.late{color:var(--amber)}
+.state.wait{color:var(--muted);font-weight:400}
+.dose.late{background:var(--amber-soft)}
+
+.rest{display:flex;flex-direction:column;gap:6px}
+.rest h3{font-size:1.15rem}
+.rest ul{list-style:none;margin:0;padding:0}
+.rest li{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 0;border-bottom:1px dashed var(--rule)}
+.rest .when{color:var(--muted)}
+
+.empty{background:var(--surface);border-radius:20px;box-shadow:var(--lift);padding:22px 18px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.empty h2{font-size:1.35rem}
+.empty p{color:var(--muted);max-width:52ch}
+.muted{color:var(--muted)}
+
+.btn{border:0;border-radius:99px;padding:11px 18px;font-weight:700;background:var(--teal);color:var(--teal-ink)}
+.btn.ghost{background:var(--surface);color:var(--teal);box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--teal) 40%, transparent)}
+.btn.small{padding:7px 14px;font-size:.9rem}
+.btn.danger{background:var(--amber);color:#fff}
+.btn.text{background:transparent;color:var(--teal);padding:6px 4px;border-radius:6px;text-decoration:none;display:inline-block}
+.btn:disabled{opacity:.6;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Receta */
+.medhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.medhead h2{font-size:1.5rem}
+.medlist{list-style:none;margin:0;padding:0;background:var(--surface);border-radius:20px;overflow:hidden;box-shadow:var(--lift)}
+.med{padding:16px;display:flex;flex-direction:column;gap:8px}
+.med + .med{border-top:1px dashed var(--rule)}
+.med .head{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start}
+.capsule{width:12px;height:26px;border-radius:7px;background:linear-gradient(180deg, var(--teal) 50%, #BFE3D8 50%);margin-top:3px}
+.capsule.alt-c{background:linear-gradient(180deg, var(--plum) 50%, #DCC8EE 50%)}
+.capsule.end{opacity:.35}
+.med .mi{min-width:0;display:flex;flex-direction:column}
+.med .nm{font-family:var(--display);font-size:1.25rem;font-weight:600;overflow-wrap:anywhere;line-height:1.2}
+.med .dz{color:var(--muted)}
+.med .meta,.med .notes{padding-left:22px}
+.med .notes{font-size:.92rem;color:var(--muted);font-style:italic}
+.med .row{padding-left:14px}
+.pill{font-size:.8rem;font-weight:700;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.pill.yes{background:var(--teal-soft);color:var(--teal)}
+.pill.no{color:var(--muted)}
+.hist-t{font-size:1.35rem}
+.pets{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;margin:0 -2px;scrollbar-width:none}
+.pets::-webkit-scrollbar{display:none}
+.petchip{flex:none;display:flex;align-items:center;gap:8px;border:0;background:var(--surface);border-radius:99px;padding:4px 14px 4px 4px;box-shadow:var(--lift);font-weight:700;color:var(--ink)}
+.petchip .mini{position:relative;width:34px;height:34px;border-radius:50%;background:var(--sun-soft);color:var(--sun);display:grid;place-items:center;font-size:1.2rem;flex:none}
+.petchip .mini img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.petchip .mini svg{width:20px;height:20px}
+.petchip .mini .badge{top:-4px;right:-6px}
+.petchip .pn{max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.petchip[aria-pressed="true"]{background:var(--teal);color:var(--teal-ink)}
+.petchip[aria-pressed="true"] .mini{box-shadow:0 0 0 2px var(--teal-ink)}
+.petchip.add{background:transparent;box-shadow:inset 0 0 0 1.5px var(--rule);color:var(--muted)}
+.petchip.add .mini{background:var(--teal-lid);color:var(--teal);font-weight:700}
+.who-t{color:var(--teal)}
+.delpet{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--rule);padding-top:12px}
+.ico{position:relative;display:inline-flex}
+.badge{position:absolute;top:-6px;right:-10px;min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:#ff3b30;color:#fff;font:700 11px/18px var(--body);text-align:center;box-shadow:0 0 0 2px var(--surface);font-variant-numeric:tabular-nums}
+.duepop{position:fixed;inset:0;z-index:11;background:rgba(43,36,32,.42);display:flex;align-items:center;justify-content:center;
+  padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.duecard{background:var(--surface);border-radius:24px;box-shadow:0 18px 50px rgba(43,36,32,.25);width:100%;max-width:440px;max-height:100%;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px;animation:pop .22s ease-out}
+@keyframes pop{from{transform:translateY(12px) scale(.97);opacity:0}to{transform:none;opacity:1}}
+.duehead{display:flex;align-items:center;gap:12px}
+.duehead h2{font-size:1.5rem}
+.bell{width:44px;height:44px;border-radius:50%;background:var(--sun-soft);color:var(--sun);display:grid;place-items:center;flex:none}
+.bell svg{width:24px;height:24px}
+.duelist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.duelist li{display:grid;grid-template-columns:48px 1fr;gap:4px 12px;align-items:center;padding:12px 0;border-top:1px dashed var(--rule)}
+.duelist li:first-child{border-top:0;padding-top:0}
+.duelist .info{min-width:0}
+.duelist .nm{font-weight:700;overflow-wrap:anywhere}
+.duelist .sub{color:var(--muted);font-size:.92rem}
+.duelist .late-t{color:var(--amber);font-weight:700}
+.duelist .btn{grid-column:2;justify-self:start;margin-top:6px}
+#duepop-later{align-self:stretch}
+.acts{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%}
+.remlink{display:inline-flex;align-items:center;gap:7px;background:var(--teal-soft);color:var(--teal);font-weight:700;font-size:.9rem;padding:8px 14px;border-radius:99px;text-decoration:none}
+.remlink svg{width:17px;height:17px}
+.minor{display:flex;gap:18px;flex-wrap:wrap}
+.lnk{border:0;background:transparent;padding:4px 0;font-weight:700;font-size:.9rem;color:var(--teal)}
+.lnk.quiet{color:var(--muted);font-weight:400}
+.med.hist .nm{color:var(--muted)}
+.endbox{display:flex;flex-direction:column;gap:8px;width:100%}
+
+/* Perfil */
+.card{background:var(--surface);border-radius:20px;box-shadow:var(--lift);padding:18px;display:flex;flex-direction:column;gap:14px}
+.card h2{font-size:1.35rem}
+.prof-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.prof-top .photo{width:96px;height:96px}
+.prof-top .photo svg{width:48px;height:48px}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fact{background:var(--sun-soft);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;min-width:0}
+.fact b{font-family:var(--display);font-size:1.3rem;font-weight:600;line-height:1.15;overflow-wrap:anywhere}
+.fact span{font-size:.82rem;color:var(--muted)}
+.weightnow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.weightnow b{font-family:var(--display);font-size:2.2rem;font-weight:600;line-height:1}
+.weightnow span{color:var(--muted)}
+.weightnow .delta{font-weight:700;color:var(--ink)}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:.82rem;padding:4px 8px;border-radius:8px;white-space:nowrap;transform:translate(-50%,-120%)}
+.wlist{list-style:none;margin:0;padding:0}
+.wlist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px dashed var(--rule)}
+.wlist .x{border:0;background:transparent;color:var(--muted);font-size:.88rem;padding:4px 6px;border-radius:6px}
+.inline{display:grid;grid-template-columns:1fr 1.3fr;gap:8px;align-items:end}
+.inline .btn{grid-column:1 / -1;justify-self:start}
+.inline > *{min-width:0}
+
+label{font-weight:700;font-size:.92rem}
+input[type=text],input[type=date],input[type=time],input[type=number],select,textarea{width:100%;border:1.5px solid var(--rule);background:var(--bg);border-radius:12px;padding:10px 12px}
+input:focus,select:focus,textarea:focus{border-color:var(--teal);outline:none;background:var(--surface)}
+textarea{resize:vertical;min-height:64px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1.5px solid var(--rule);background:var(--bg);border-radius:99px;padding:7px 14px;font-weight:700}
+.seg button[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:var(--teal-ink)}
+
+.note{border-top:1px dashed var(--rule);padding-top:14px;font-size:.92rem;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.note b{color:var(--ink)}
+.banner{background:var(--amber-soft);color:var(--amber);border-radius:12px;padding:10px 12px;font-size:.9rem;font-weight:700}
+.ok{color:var(--teal);font-weight:700;font-size:.9rem}
+.sync{font-size:.78rem;color:var(--muted)}
+
+.sheet{position:fixed;inset:0;background:rgba(43,36,32,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10;
+  padding-top:max(24px, env(safe-area-inset-top, 0px))}
+.panel{background:var(--surface);width:100%;max-width:600px;max-height:100%;overflow:auto;border-radius:24px 24px 0 0;
+  padding:20px max(18px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+  display:flex;flex-direction:column;gap:14px}
+.panel h2{font-size:1.45rem}
+@media (min-width:640px){.sheet{align-items:center}.panel{border-radius:24px;max-height:90%}}
+.field{display:flex;flex-direction:column;gap:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two > *{min-width:0}
+.times{display:flex;flex-direction:column;gap:6px}
+.times .t{display:flex;gap:6px}
+.times .t input{flex:1}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--rule);background:var(--bg);font-weight:700}
+.chips button[aria-pressed="true"]{background:var(--teal);color:var(--teal-ink);border-color:var(--teal)}
+.preview{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.preview div{border-radius:12px 12px 8px 8px;padding:6px 0;font-size:.78rem;background:var(--teal-lid);color:var(--muted)}
+.preview div.y{background:var(--teal);color:var(--teal-ink);font-weight:700}
+.preview b{display:block;font-size:.95rem}
+.hint{font-size:.88rem;color:var(--muted)}
+.err{color:var(--amber);font-weight:700;font-size:.9rem}
+@media (max-width:380px){.facts{grid-template-columns:1fr 1fr}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="wrap gut top">
+  <div class="who">
+    <button class="photo" id="hphoto" aria-label="Ver perfil"></button>
+    <div class="txt"><h1 id="title">Tu mascota</h1><p id="hsub">Pastillero</p></div>
+  </div>
+  <div class="pets" id="pets"></div>
+  <div class="organizer" id="organizer"></div>
+</header>
+
+<main class="wrap gut app">
+  <div id="banner" class="banner" hidden></div>
+  <section id="view-today" class="view"></section>
+  <section id="view-meds" class="view" hidden></section>
+  <section id="view-pet" class="view" hidden></section>
+  <span class="sync" id="sync">Cargando…</span>
+</main>
+
+<nav class="tabbar" role="tablist">
+  <div class="wrap">
+    <button id="tab-today" role="tab" aria-selected="true"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 10h18M8.5 15l2.5 2.5 4.5-4.5"/></svg></span><span>Hoy</span></button>
+    <button id="tab-meds" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5a5 5 0 0 1-7-7l7-7a5 5 0 0 1 7 7z"/><path d="M7 10l7 7"/></svg><span>Receta</span></button>
+    <button id="tab-pet" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="6.2" cy="9.4" rx="2" ry="2.6"/><ellipse cx="10" cy="5.8" rx="2" ry="2.7"/><ellipse cx="14.4" cy="5.8" rx="2" ry="2.7"/><ellipse cx="18" cy="9.6" rx="2" ry="2.6"/><path d="M12 11.2c-3 0-6 3.6-6 6.2 0 1.7 1.3 2.6 2.8 2.6 1.3 0 2-.7 3.2-.7s1.9.7 3.2.7c1.5 0 2.8-.9 2.8-2.6 0-2.6-3-6.2-6-6.2z"/></svg><span id="tab-pet-l">Perfil</span></button>
+  </div>
+</nav>
+<input type="file" id="photo-input" accept="image/*" hidden>
+<input type="file" id="restore-input" accept="application/json,.json" hidden>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="duepop" id="duepop" hidden>
+  <section class="duecard" role="alertdialog" aria-modal="true" aria-labelledby="duepop-title">
+    <div class="duehead"><span class="bell" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span><h2 id="duepop-title">Le toca a tu mascota</h2></div>
+    <ul class="duelist" id="duepop-list"></ul>
+    <button class="btn ghost" id="duepop-later">Ahora no</button>
+  </section>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <form class="panel" id="form" novalidate>
+    <h2 id="form-title">Nuevo medicamento</h2>
+    <div class="field"><label for="f-name">Nombre</label><input type="text" id="f-name" placeholder="Ej: Prednisolona" autocomplete="off"></div>
+    <div class="field"><label for="f-dose">Dosis</label><input type="text" id="f-dose" placeholder="Ej: ½ comprimido, 2 ml, 1 gota" autocomplete="off"></div>
+    <div class="field">
+      <label>Horarios</label>
+      <div class="times" id="f-times"></div>
+      <div><button type="button" class="btn ghost small" id="f-addtime">+ Agregar horario</button></div>
+    </div>
+    <div class="field">
+      <label for="f-freq">¿Qué días?</label>
+      <select id="f-freq">
+        <option value="daily">Todos los días</option>
+        <option value="alt">Día por medio</option>
+        <option value="interval">Cada cierta cantidad de días</option>
+        <option value="weekdays">Días específicos de la semana</option>
+      </select>
+    </div>
+    <div class="field" id="f-every-wrap" hidden><label for="f-every">Cada cuántos días</label><input type="number" id="f-every" min="2" max="30" value="3"></div>
+    <div class="field" id="f-days-wrap" hidden><label>Días</label><div class="chips" id="f-days"></div></div>
+    <div class="field" id="f-parity" hidden>
+      <label>¿Le toca hoy?</label>
+      <div class="row"><button type="button" class="btn ghost small" id="f-today-yes">Sí, hoy le toca</button><button type="button" class="btn ghost small" id="f-today-no">No, hoy no</button></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="f-start">Desde</label><input type="date" id="f-start"></div>
+      <div class="field"><label for="f-end">Hasta (opcional)</label><input type="date" id="f-end"></div>
+    </div>
+    <div class="field"><span class="hint">Próximos 7 días</span><div class="preview" id="f-preview"></div></div>
+    <div class="field"><label for="f-notes">Notas (opcional)</label><textarea id="f-notes" placeholder="Ej: dar con comida"></textarea></div>
+    <div class="err" id="f-err" hidden></div>
+    <div class="row" style="justify-content:flex-end">
+      <button type="button" class="btn ghost" id="f-cancel">Cancelar</button>
+      <button type="submit" class="btn">Guardar</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const addDays = (s,n) => { const d = parse(s); d.setDate(d.getDate()+n); return ymd(d); };
+const diff = (a,b) => Math.round((parse(b) - parse(a)) / 864e5);
+const today = () => ymd(new Date());
+const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const DOW = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const DOWL = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MON = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const CHIP = [[1,'L'],[2,'M'],[3,'X'],[4,'J'],[5,'V'],[6,'S'],[0,'D']];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+
+const S = { allMeds: [], rootPet: '', profiles: {}, allWeights: [], petId: 'main', meds: [], pet: '', profile: {}, weights: [], logs: {}, sel: today(), tab: 'today', ready: false, confirmDel: null, remBusy: {}, remMsg: {}, remErr: {} };
+let api = null;
+
+/* ---------- Calendario ---------- */
+function isDue(m, date){
+  if (!m.start || date < m.start) return false;
+  if (m.end && date > m.end) return false;
+  if (m.freq === 'interval') return diff(m.start, date) % Math.max(1, m.every || 2) === 0;
+  if (m.freq === 'weekdays') return (m.days || []).includes(parse(date).getDay());
+  return true;
+}
+function nextDue(m, from){ for (let i = 1; i <= 90; i++){ const d = addDays(from, i); if (isDue(m, d)) return d; } return null; }
+function relDay(d){
+  const n = diff(today(), d);
+  if (n === 0) return 'hoy'; if (n === 1) return 'mañana'; if (n === -1) return 'ayer';
+  const x = parse(d), yr = x.getFullYear() !== new Date().getFullYear() ? ` ${x.getFullYear()}` : '';
+  return `${DOWL[x.getDay()]} ${x.getDate()} ${MON[x.getMonth()]}${yr}`;
+}
+function freqText(m){
+  if (m.freq === 'interval') return m.every == 2 ? 'Día por medio' : `Cada ${m.every} días`;
+  if (m.freq === 'weekdays'){
+    const ds = CHIP.filter(([v]) => (m.days||[]).includes(v)).map(([v]) => DOW[v]);
+    return ds.length ? ds.join(', ') : 'Sin días elegidos';
+  }
+  return 'Todos los días';
+}
+function timesText(t){ return t.length > 1 ? t.slice(0,-1).join(', ') + ' y ' + t[t.length-1] : (t[0] || ''); }
+function slotLabel(t){ const h = +t.slice(0,2); return h < 12 ? 'De la mañana' : h < 19 ? 'De la tarde' : 'De la noche'; }
+const doseKey = (id, t) => `${id}_${t.replace(':','')}`;
+const isAlt = m => m.freq === 'interval';
+
+/* ---------- Recordatorios del iPhone ---------- */
+const RRDAY = ['SU','MO','TU','WE','TH','FR','SA'];
+function isoAt(date, time){
+  const [y,mo,d] = date.split('-').map(Number), [h,mi] = time.split(':').map(Number);
+  const o = -new Date(y, mo-1, d, h, mi).getTimezoneOffset(), a = Math.abs(o);
+  return `${date}T${time}:00${o >= 0 ? '+' : '-'}${pad(Math.floor(a/60))}:${pad(a%60)}`;
+}
+function firstDue(m, time){
+  const t = today(), now = nowHM();
+  for (let i = 0; i <= 400; i++){ const d = addDays(t, i); if (isDue(m, d) && (i > 0 || time > now)) return d; }
+  return null;
+}
+function recurrence(m){
+  let r;
+  if (m.freq === 'weekdays'){
+    const days = CHIP.map(([v]) => v).filter(v => (m.days || []).includes(v)).map(v => RRDAY[v]);
+    r = { frequency: 'weekly', interval: 1, days_of_week: days, rrule: 'FREQ=WEEKLY;BYDAY=' + days.join(','), human_readable_frequency: freqText(m) };
+  } else {
+    const n = m.freq === 'interval' ? Math.max(1, m.every || 2) : 1;
+    r = { frequency: 'daily', interval: n, rrule: 'FREQ=DAILY' + (n > 1 ? ';INTERVAL=' + n : ''), human_readable_frequency: freqText(m) };
+  }
+  if (m.end){ r.end = { type: 'until', until: isoAt(m.end, '23:59') }; r.rrule += ';UNTIL=' + m.end.replace(/-/g, '') + 'T235900'; }
+  return r;
+}
+function buildReminders(m){
+  const out = [];
+  for (const time of (m.times || [])){
+    const d = firstDue(m, time); if (!d) continue;
+    out.push({
+      title: `${S.pet || 'Mascota'}: ${m.name}${m.dose ? ` (${m.dose})` : ''}`,
+      notes: `${freqText(m)} a las ${time}. Márcalo también en el Pastillero.${m.notes ? ' ' + m.notes : ''}`,
+      due_date: isoAt(d, time), due_date_includes_time: true, priority: 'high',
+      alarms: [{ type: 'relative', seconds_before: 0 }], recurrence: recurrence(m)
+    });
+  }
+  return out;
+}
+function idsFrom(p){ try { return (p.reminder_lists || []).flatMap(l => (l.items || []).map(i => i.id)).filter(Boolean); } catch(e){ return []; } }
+function remError(e){
+  switch (e && e.code){
+    case 'server_not_connected': case 'not_granted': case 'capability_disabled': case 'capability_removed':
+      return 'Esto funciona solo desde la app de Claude en tu iPhone. Abre el Pastillero ahí e inténtalo de nuevo.';
+    case 'cancelled': return 'No se hizo ningún cambio porque no se aprobó en el teléfono.';
+    case 'approval_required': case 'not_in_manifest': return 'Falta tu permiso para usar Recordatorios. Tócalo de nuevo y elige Permitir.';
+    case 'blocked_by_policy': return 'Tu cuenta no permite usar Recordatorios desde esta página.';
+    default: return 'No se pudo confirmar el cambio. Revisa la app Recordatorios antes de volver a intentarlo, para no duplicar.';
+  }
+}
+function putMed(nm){ S.allMeds = S.allMeds.map(x => x.id === nm.id ? nm : x); derive(); api.saveMed(nm).catch(fail); }
+const REM_PHRASE = 'Actualiza los recordatorios del Pastillero';
+function syncReminders(id){
+  const m = S.meds.find(x => x.id === id); if (!m) return;
+  putMed({ ...m, remindersPending: true });
+  render();
+}
+function deleteReminders(m){
+  if (!m || !(m.reminderIds && m.reminderIds.length)) return;
+  api.addOrphan && api.addOrphan(m).catch(fail);
+}
+function copyPhrase(btn){
+  const done = () => { btn.textContent = 'Copiado'; setTimeout(() => { btn.textContent = 'Copiar frase'; }, 1800); };
+  try { navigator.clipboard.writeText(REM_PHRASE).then(done, () => selectPhrase()); } catch(e){ selectPhrase(); }
+}
+function selectPhrase(){ const el = document.getElementById('rem-phrase'); if (!el) return; const r = document.createRange(); r.selectNodeContents(el); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+
+/* ---------- Mascotas ---------- */
+const PET_KEY = 'pastillero.pet.v1';
+try { const v = localStorage.getItem(PET_KEY); if (v) S.petId = v; } catch(e){}
+const petOf = m => m.petId || 'main';
+function petName(id){ return id === 'main' ? (S.rootPet || (S.profiles.main && S.profiles.main.name) || '') : ((S.profiles[id] && S.profiles[id].name) || ''); }
+function petIds(){
+  const ids = Object.keys(S.profiles).filter(k => k !== 'main' && !S.profiles[k]._draft)
+    .sort((a, b) => (S.profiles[a].createdAt || 0) - (S.profiles[b].createdAt || 0));
+  const hasMain = S.profiles.main || S.rootPet || S.allMeds.some(m => petOf(m) === 'main') || S.allWeights.some(w => (w.petId || 'main') === 'main') || !ids.length;
+  const draft = Object.keys(S.profiles).filter(k => S.profiles[k]._draft);
+  return [...(hasMain ? ['main'] : []), ...ids, ...draft];
+}
+function derive(){
+  const ids = petIds();
+  if (!ids.includes(S.petId)) S.petId = ids[0] || 'main';
+  S.meds = S.allMeds.filter(m => petOf(m) === S.petId);
+  S.profile = S.profiles[S.petId] || {};
+  S.pet = petName(S.petId);
+  S.weights = S.allWeights.filter(w => (w.petId || 'main') === S.petId).sort((a, b) => a.date.localeCompare(b.date));
+}
+function selectPet(id){
+  S.petId = id; S.editProfile = !!(S.profiles[id] && S.profiles[id]._draft); S.confirmDel = null; S.confirmEnd = null; S.confirmPetDel = false;
+  try { localStorage.setItem(PET_KEY, id); } catch(e){}
+  derive(); render(); scrollTo(0, 0);
+}
+const CAT = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 3l4.2 4.1A9.6 9.6 0 0 1 12 6.4c1.3 0 2.6.25 3.8.7L20 3v8.2c.6 1 .9 2.1.9 3.3C20.9 18.6 17 21 12 21s-8.9-2.4-8.9-6.5c0-1.2.3-2.3.9-3.3z"/></svg>';
+function petPhoto(id){
+  const p = S.profiles[id] || {};
+  return p.photo ? `<img src="${esc(p.photo)}" alt="">` : (p.species === 'gato' ? CAT : PAW);
+}
+function lateCount(petId){
+  const t = today(), log = S.logs[t] || {}, n = nowMins();
+  return dayEntriesFor(S.allMeds.filter(m => petOf(m) === petId), t).filter(e => !log[e.key] && minsOf(e.t) <= n).length;
+}
+function renderPets(){
+  const ids = petIds().filter(id => !(S.profiles[id] && S.profiles[id]._draft) || id === S.petId);
+  $('#pets').innerHTML = ids.map(id => {
+    const late = S.ready && S.logsReady ? lateCount(id) : 0, nm = petName(id) || 'Nueva mascota';
+    return `<button class="petchip" data-pet="${id}" aria-pressed="${id === S.petId}" aria-label="${esc(nm)}${late ? `, ${late} dosis atrasada${late === 1 ? '' : 's'}` : ''}">
+      <span class="mini">${petPhoto(id)}${late ? `<span class="badge">${late > 9 ? '9+' : late}</span>` : ''}</span><span class="pn">${esc(nm)}</span></button>`;
+  }).join('') + (ids.length < 6 ? `<button class="petchip add" data-addpet aria-label="Agregar mascota"><span class="mini">+</span><span class="pn">Agregar</span></button>` : '');
+}
+
+/* ---------- Almacenamiento ---------- */
+function dbApi(db, uid){
+  const root = db.doc(`data/users/${uid}/pastillero`);
+  const meds = root.collection('meds');
+  const log = root.collection('log');
+  const chains = {};
+  const serial = (k, fn) => (chains[k] = (chains[k] || Promise.resolve()).catch(() => {}).then(fn));
+  const onErr = () => showBanner('Se perdió la sincronización. Recarga la página para volver a conectar.');
+  let adopted = false;
+  // Vincula recordatorios creados antes desde el chat (una sola vez)
+  const adopt = () => db.doc('legacy/reminders').get().then(s => {
+    if (!s.exists) return;
+    const map = s.data().byMed || {};
+    for (const m of S.meds){
+      if (m.reminderIds && m.reminderIds.length) continue;
+      const ids = map[`${m.name.trim().toLowerCase()}@${(m.times || [])[0]}`];
+      if (ids) putMed({ ...m, reminderIds: ids, remindersStale: false });
+    }
+    render();
+    return db.doc('legacy/reminders').delete();
+  }).catch(() => {});
+  return {
+    label: 'Sincronizado entre tus dispositivos',
+    start(){
+      root.onSnapshot(s => { S.rootPet = s.exists ? (s.data().pet || '') : ''; render(); }, onErr);
+      meds.onSnapshot(q => {
+        S.allMeds = q.docs.map(d => ({ id: d.id, ...d.data() })); S.ready = true; render();
+        if (!adopted && q.docs.length && !q.metadata.fromCache){ adopted = true; adopt(); }
+      }, onErr);
+      root.collection('profile').onSnapshot(q => {
+        const drafts = {}; for (const k in S.profiles) if (S.profiles[k]._draft) drafts[k] = S.profiles[k];
+        const P = {}; q.docs.forEach(d => { P[d.id] = { ...d.data() }; }); S.profiles = { ...drafts, ...P }; render();
+      }, onErr);
+      root.collection('weights').onSnapshot(q => {
+        S.allWeights = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(w => w && w.date && typeof w.kg === 'number'); render();
+      }, onErr);
+      log.orderBy('date','desc').limit(120).onSnapshot(q => {
+        const L = {}; q.docs.forEach(d => { L[d.id] = d.data().doses || {}; }); S.logs = L; if (!q.metadata.fromCache) S.logsReady = true; render();
+      }, onErr);
+    },
+    saveMed(m){ const { id, ...body } = m; return serial('m'+id, () => meds.doc(id).set(body)); },
+    delMed(id){ return serial('m'+id, () => meds.doc(id).delete()); },
+    setPet(name){ return serial('root', () => root.set({ pet: name })); },
+    setDoses(date, doses){ return serial('l'+date, () => log.doc(date).set({ date, doses })); },
+    saveProfile(id, pr){ return serial('prof'+id, () => root.collection('profile').doc(id).set(pr)); },
+    delProfile(id){ return serial('prof'+id, () => root.collection('profile').doc(id).delete()); },
+    setWeight(w){ const { id, ...body } = w; return serial('w'+id, () => root.collection('weights').doc(id).set(body)); },
+    delWeight(id){ return serial('w'+id, () => root.collection('weights').doc(id).delete()); },
+    addOrphan(m){ return root.collection('orphans').doc(m.id).set({ name: m.name, reminderIds: m.reminderIds, at: Date.now() }); }
+  };
+}
+function localApi(){
+  const KEY = 'pastillero.v1';
+  let data = { meds: [], pet: '', logs: {}, profile: {}, weights: [], profiles: null };
+  try { const raw = localStorage.getItem(KEY); if (raw) data = { ...data, ...JSON.parse(raw) }; } catch(e){}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ meds: S.allMeds, pet: S.rootPet, logs: S.logs, profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)), weights: S.allWeights })); } catch(e){} return Promise.resolve(); };
+  return {
+    label: 'Guardado en este teléfono',
+    start(){ S.allMeds = data.meds || []; S.rootPet = data.pet || ''; S.logs = data.logs || {}; S.profiles = data.profiles || (data.profile ? { main: data.profile } : {}); S.allWeights = (data.weights || []).map(w => ({ id: w.id || w.date, ...w })); S.ready = true; S.logsReady = true; render(); },
+    saveMed: save, delMed: save, setPet: save, setDoses: save, saveProfile: save, delProfile: save, setWeight: save, delWeight: save,
+    canImport: true,
+    importAll(d){ S.allMeds = d.meds || []; S.rootPet = d.pet || ''; S.logs = d.logs || {}; S.profiles = d.profiles || {}; S.allWeights = (d.weights || []).map(w => ({ id: w.id || w.date, ...w })); return save(); }
+  };
+}
+async function init(){
+  let db = null, uid = null;
+  try {
+    if (window.claude && typeof window.claude.use === 'function'){
+      const [d, u] = await Promise.all([window.claude.use('db'), window.claude.use('user')]);
+      db = d; uid = u ? await u.id() : null;
+    }
+  } catch(e){}
+  api = (db && uid) ? dbApi(db, uid) : localApi();
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+  $('#sync').textContent = api.label;
+  api.start();
+}
+function showBanner(t){ const b = $('#banner'); b.textContent = t; b.hidden = !t; }
+const fail = () => showBanner('No se pudo guardar el último cambio. Revisa tu conexión e inténtalo de nuevo.');
+
+/* ---------- Acciones ---------- */
+function toggleDose(date, key){
+  const cur = { ...(S.logs[date] || {}) };
+  if (cur[key]) delete cur[key]; else cur[key] = Date.now();
+  S.logs = { ...S.logs, [date]: cur };
+  render();
+  api.setDoses(date, cur).catch(fail);
+}
+
+/* ---------- Vista: Dosis ---------- */
+function dayEntries(date){ return dayEntriesFor(S.meds, date); }
+function dayEntriesFor(list, date){
+  const out = [];
+  for (const m of list) if (isDue(m, date)) for (const t of (m.times || [])) out.push({ m, t, key: doseKey(m.id, t) });
+  return out.sort((a,b) => a.t.localeCompare(b.t) || a.m.name.localeCompare(b.m.name));
+}
+const DL = ['D','L','M','X','J','V','S'];
+const cap1 = s => s.replace(/^./, c => c.toUpperCase());
+function renderOrganizer(){
+  const o = $('#organizer'); o.hidden = S.tab !== 'today';
+  const date = S.sel, t = today();
+  let h = `<button class="nav" data-shift="-7" aria-label="Semana anterior">‹</button>`;
+  for (let i = -3; i <= 3; i++){
+    const d = addDays(date, i), x = parse(d), es = dayEntries(d), lg = S.logs[d] || {};
+    const done = es.filter(e => lg[e.key]).length, pct = es.length ? Math.round(done / es.length * 100) : 0;
+    h += `<button class="lid${d === t ? ' today' : ''}${es.length && done === es.length ? ' full' : ''}" data-day="${d}" aria-pressed="${d === date}" aria-label="${DOWL[x.getDay()]} ${x.getDate()}: ${done} de ${es.length} dosis dadas">
+      <span class="fill" style="height:${pct}%"></span><span class="dl">${DL[x.getDay()]}</span><span class="dn">${x.getDate()}</span></button>`;
+  }
+  o.innerHTML = h + `<button class="nav" data-shift="7" aria-label="Semana siguiente">›</button>`;
+}
+function renderToday(){
+  const v = $('#view-today'), date = S.sel, t = today(), log = S.logs[date] || {};
+  if (!S.ready){ v.innerHTML = `<p class="muted">Cargando el tratamiento…</p>`; return; }
+  if (!S.meds.length){
+    v.innerHTML = `<div class="empty"><h2>El pastillero está vacío</h2>
+      <p>Agrega cada medicamento con su dosis, horarios y qué días le toca. Aquí verás las dosis del día para marcarlas a medida que las das.</p>
+      <button class="btn" data-new>Agregar medicamento</button></div>`;
+    return;
+  }
+  const es = dayEntries(date), done = es.filter(e => log[e.key]).length, left = es.length - done, now = nowHM();
+  const lateN = es.filter(e => !log[e.key] && (date < t || (date === t && e.t <= now))).length;
+  const label = date === t ? 'Hoy' : cap1(relDay(date));
+  const msg = !es.length ? 'No le toca ninguna dosis este día.'
+    : !left ? `Las ${es.length} dosis están dadas.`
+    : lateN ? `<b>${lateN} atrasada${lateN > 1 ? 's' : ''}</b>, faltan ${left} de ${es.length} dosis.`
+    : `Faltan <b>${left}</b> de ${es.length} dosis.`;
+  let html = `<div class="dayhead"><h2>${esc(label)}</h2><p class="${lateN ? 'late' : ''}">${msg}</p>
+    ${es.length ? `<div class="track"><span style="width:${Math.round(done / es.length * 100)}%"></span></div>` : ''}</div>`;
+  const groups = {};
+  es.forEach(e => (groups[e.t] = groups[e.t] || []).push(e));
+  for (const time of Object.keys(groups)){
+    html += `<section class="slot"><h3>${time} <small>${slotLabel(time).toLowerCase()}</small></h3><ul class="blister">`;
+    for (const e of groups[time]){
+      const given = log[e.key], future = date > t;
+      const late = !given && (date < t || (date === t && time <= now));
+      let st;
+      if (given){ const g = new Date(given); st = `<span class="state done">Dada ${pad(g.getHours())}:${pad(g.getMinutes())}</span>`; }
+      else if (late) st = `<span class="state late">${date < t ? 'Sin marcar' : 'Atrasada'}</span>`;
+      else st = `<span class="state wait">${future ? 'Programada' : 'Más tarde'}</span>`;
+      html += `<li class="dose${late ? ' late' : ''}">
+        <button class="pocket${given ? ' on' : ''}${isAlt(e.m) ? ' altp' : ''}" data-dose="${e.key}" ${future ? 'disabled' : ''} aria-pressed="${!!given}" aria-label="${given ? 'Desmarcar' : 'Marcar como dada'}: ${esc(e.m.name)} a las ${time}"><span class="cap"></span>${CHECK}</button>
+        <div class="info"><div class="nm">${esc(e.m.name)}</div>
+        <div class="sub">${esc(e.m.dose || '')}${isAlt(e.m) ? ` <span class="alt">${e.m.every == 2 ? 'día por medio' : 'cada ' + e.m.every + ' días'}</span>` : ''}${e.m.notes ? `<br>${esc(e.m.notes)}` : ''}</div></div>${st}</li>`;
+    }
+    html += `</ul></section>`;
+  }
+  const skip = S.meds.filter(m => !isDue(m, date) && !(m.end && date > m.end));
+  if (skip.length){
+    html += `<section class="rest"><h3>${date === t ? 'Hoy no le toca' : 'Ese día no le toca'}</h3><ul>`;
+    for (const m of skip){
+      const nx = nextDue(m, date);
+      const when = date < m.start ? `empieza ${relDay(m.start)}` : nx ? `próxima ${relDay(nx)}` : 'sin próximas dosis';
+      html += `<li><span>${esc(m.name)}</span><span class="when">${when}</span></li>`;
+    }
+    html += `</ul></section>`;
+  }
+  if (date !== t) html += `<div><button class="btn ghost small" data-day="${t}">Volver a hoy</button></div>`;
+  v.innerHTML = html;
+}
+
+/* ---------- Vista: Medicamentos ---------- */
+function schedText(m){
+  const t = today();
+  let s = `${freqText(m)} a las ${timesText(m.times || [])}`;
+  if (m.start > t) s += `, desde ${relDay(m.start)}`;
+  if (m.end) s += m.end < t ? `, terminó ${relDay(m.end)}` : `, hasta ${relDay(m.end)}`;
+  return s;
+}
+const isFinished = (m, t) => !!m.finished || (m.end && m.end < t);
+function longDate(d){ const x = parse(d); return `${x.getDate()} ${MON[x.getMonth()]} ${x.getFullYear()}`; }
+function moments(m){ const s = [...new Set((m.times || []).map(x => slotLabel(x).replace('De la ', '')))]; return s.length > 1 ? s.slice(0, -1).join(', ') + ' y ' + s[s.length - 1] : s[0] || ''; }
+function givenCount(id){ let n = 0; for (const d in S.logs) for (const k in S.logs[d]) if (k.startsWith(id + '_')) n++; return n; }
+function remLink(m){
+  const rs = buildReminders(m);
+  if (!rs.length) return '';
+  const lines = rs.map(r => `- Título: "${r.title}". Primera vez: ${r.due_date}. Alarma a esa hora. Repetición: ${r.recurrence.human_readable_frequency} (${r.recurrence.rrule}).`).join('\n');
+  const msg = `Crea en la app Recordatorios de mi iPhone (lista predeterminada) ${rs.length === 1 ? 'este recordatorio' : 'estos recordatorios'} del pastillero de ${S.pet || 'mi mascota'}. Si ya existe uno con el mismo título, reemplázalo para no duplicar.\n${lines}`;
+  return `<a class="remlink" href="https://claude.ai/new?q=${encodeURIComponent(msg)}" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>Agregar a Recordatorios</a>`;
+}
+function medRow(m, t){
+  const due = isDue(m, t);
+  let actions;
+  if (S.confirmDel === m.id) actions = `<span>¿Eliminar ${esc(m.name)}? Se borra de la receta y del historial.</span><button class="btn danger small" data-del-yes="${m.id}">Sí, eliminar</button><button class="btn text" data-del-no>Cancelar</button>`;
+  else if (S.confirmEnd === m.id) actions = `<div class="endbox"><label for="end-date">Último día que se lo diste</label>
+      <input type="date" id="end-date" value="${t}" min="${m.start}" max="${t}">
+      <div class="row"><button class="btn small" data-end-yes="${m.id}">Terminar tratamiento</button><button class="btn text" data-end-no>Cancelar</button></div></div>`;
+  else actions = `<div class="acts"><div class="minor"><button class="lnk" data-edit="${m.id}">Editar</button><button class="lnk" data-end="${m.id}">Terminar</button><button class="lnk quiet" data-del="${m.id}">Eliminar</button></div></div>`;
+  return `<li class="med"><div class="head"><span class="capsule${isAlt(m) ? ' alt-c' : ''}" aria-hidden="true"></span>
+    <div class="mi"><span class="nm">${esc(m.name)}</span><span class="dz">${esc(m.dose || 'Sin dosis indicada')}</span></div>
+    <span class="pill ${due ? 'yes' : 'no'}">${due ? 'Hoy sí' : 'Hoy no'}</span></div>
+    <p class="meta">${schedText(m)}</p>
+    ${m.notes ? `<p class="notes">${esc(m.notes)}</p>` : ''}
+    <div class="row">${actions}</div></li>`;
+}
+function histRow(m){
+  const end = m.end || m.start, days = diff(m.start, end) + 1, n = givenCount(m.id);
+  const actions = S.confirmDel === m.id
+    ? `<span>¿Borrar ${esc(m.name)} del historial?</span><button class="btn danger small" data-del-yes="${m.id}">Sí, borrar</button><button class="btn text" data-del-no>Cancelar</button>`
+    : `<button class="btn text" data-resume="${m.id}">Reanudar</button><button class="btn text" data-del="${m.id}">Borrar</button>`;
+  return `<li class="med hist"><div class="head"><span class="capsule end${isAlt(m) ? ' alt-c' : ''}" aria-hidden="true"></span>
+    <div class="mi"><span class="nm">${esc(m.name)}</span><span class="dz">${esc(m.dose || '')}</span></div>
+    <span class="pill no">${days} día${days === 1 ? '' : 's'}</span></div>
+    <p class="meta">Del ${longDate(m.start)} al ${longDate(end)}<br>${freqText(m)} a las ${timesText(m.times || [])}, en la ${moments(m)}${n ? `<br>${n} dosis marcada${n === 1 ? '' : 's'} como dada${n === 1 ? '' : 's'}` : ''}</p>
+    ${m.notes ? `<p class="notes">${esc(m.notes)}</p>` : ''}
+    <div class="row">${actions}</div></li>`;
+}
+function renderMeds(){
+  const v = $('#view-meds'), t = today();
+  const active = S.meds.filter(m => !isFinished(m, t)).sort((a, b) => a.name.localeCompare(b.name));
+  const past = S.meds.filter(m => isFinished(m, t)).sort((a, b) => (b.end || '').localeCompare(a.end || ''));
+  let html = `<div class="medhead"><h2>Receta</h2><button class="btn small" data-new>Agregar medicamento</button></div>`;
+  if (!active.length) html += `<div class="empty"><p>${past.length ? 'No hay tratamientos activos.' : 'Todavía no hay medicamentos. Cada uno guarda su dosis, horarios, frecuencia y fechas del tratamiento.'}</p></div>`;
+  else html += `<ul class="medlist">${active.map(m => medRow(m, t)).join('')}</ul>`;
+  if (past.length) html += `<section class="slot"><h2 class="hist-t">Historial</h2><p class="muted">Tratamientos terminados, con sus fechas y horarios.</p><ul class="medlist">${past.map(histRow).join('')}</ul></section>`;
+  v.innerHTML = html;
+}
+
+function remBlock(m){
+  return ''; // avisos: tarea programada de Claude
+  const has = !!(m.reminderIds && m.reminderIds.length), stale = !!m.remindersStale;
+  if (m.remindersPending) return `<div class="rem"><span class="rem-st warn">Pendiente de enviar a Recordatorios</span></div>`;
+  const status = stale ? '<span class="rem-st warn">Cambiaste este medicamento: actualiza sus recordatorios</span>'
+    : has ? '<span class="rem-st ok">✓ En Recordatorios del iPhone</span>' : '<span class="rem-st">Sin recordatorios en el iPhone</span>';
+  const label = (has || stale) ? 'Actualizar recordatorios' : 'Agregar a Recordatorios';
+  return `<div class="rem">${status}<button class="btn small${has && !stale ? ' ghost' : ''}" data-rem="${m.id}">${label}</button></div>`;
+}
+function pendingCard(){
+  return '';
+  const n = S.meds.filter(m => m.remindersPending).length;
+  if (!n) return '';
+  return `<div class="note pend"><b>${n} medicamento${n > 1 ? 's' : ''} por enviar a Recordatorios</b>
+    <span>Escríbele a Claude esta frase en el chat y él crea o actualiza las alarmas de tu iPhone:</span>
+    <span class="phrase" id="rem-phrase">${REM_PHRASE}</span>
+    <div><button class="btn small" data-copy>Copiar frase</button></div></div>`;
+}
+
+function renderHeader(){
+  const t = today(), x = parse(t), p = S.profile, lw = lastWeight();
+  $('#hphoto').innerHTML = photoHTML() + (S.tab === 'pet' ? '<span class="cam" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>' : '');
+  $('#hphoto').setAttribute('aria-label', S.tab === 'pet' ? (S.profile.photo ? 'Cambiar foto' : 'Agregar foto') : 'Ver perfil');
+  $('#title').textContent = S.pet || (S.profile._draft ? 'Nueva mascota' : 'Tu mascota');
+  $('#tab-pet-l').textContent = S.pet || 'Perfil';
+  let sub;
+  if (S.tab === 'pet') sub = [p.species === 'gato' ? (p.sex === 'hembra' ? 'Gata' : 'Gato') : p.species === 'otro' ? '' : (p.sex === 'hembra' ? 'Perrita' : 'Perro'), ageText(p.birth)].filter(Boolean).join(' de ') || (p._draft ? 'Nueva mascota' : 'Perfil');
+  else if (S.tab === 'meds'){ const n = S.meds.filter(m => !isFinished(m, t)).length; sub = `${n} medicamento${n === 1 ? '' : 's'} en tratamiento`; }
+  else sub = `${cap1(DOWL[x.getDay()])} ${x.getDate()} de ${MONL[x.getMonth()]}${lw ? `, ${kgFmt(lw.kg)} kg` : ''}`;
+  $('#hsub').textContent = sub;
+  renderOrganizer();
+}
+function render(){
+  derive();
+  renderPets();
+  renderHeader();
+  for (const k of ['today','meds','pet']){
+    $('#tab-' + k).setAttribute('aria-selected', S.tab === k);
+    $('#view-' + k).hidden = S.tab !== k;
+  }
+  if (S.tab === 'today') renderToday(); else if (S.tab === 'meds') renderMeds(); else renderPet();
+  checkDue();
+}
+
+/* ---------- Perfil ---------- */
+const PAW = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="6.2" cy="9.4" rx="2" ry="2.6"/><ellipse cx="10" cy="5.8" rx="2" ry="2.7"/><ellipse cx="14.4" cy="5.8" rx="2" ry="2.7"/><ellipse cx="18" cy="9.6" rx="2" ry="2.6"/><path d="M12 11.2c-3 0-6 3.6-6 6.2 0 1.7 1.3 2.6 2.8 2.6 1.3 0 2-.7 3.2-.7s1.9.7 3.2.7c1.5 0 2.8-.9 2.8-2.6 0-2.6-3-6.2-6-6.2z"/></svg>';
+const MONL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const kgFmt = n => (Math.round(n * 10) / 10).toLocaleString('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const shortDate = d => { const x = parse(d); return `${x.getDate()} ${MON[x.getMonth()]}${x.getFullYear() !== new Date().getFullYear() ? ' ' + x.getFullYear() : ''}`; };
+function photoHTML(){ return S.profile.photo ? `<img src="${esc(S.profile.photo)}" alt="Foto de ${esc(S.pet || 'tu mascota')}">` : (S.profile.species === 'gato' ? CAT : PAW); }
+function ageText(b){
+  if (!b) return '';
+  const a = parse(b), n = new Date();
+  let m = (n.getFullYear() - a.getFullYear()) * 12 + n.getMonth() - a.getMonth();
+  if (n.getDate() < a.getDate()) m--;
+  if (m < 0) return '';
+  const y = Math.floor(m / 12), r = m % 12;
+  if (!y) return `${r} ${r === 1 ? 'mes' : 'meses'}`;
+  return `${y} ${y === 1 ? 'año' : 'años'}${r ? ` y ${r} ${r === 1 ? 'mes' : 'meses'}` : ''}`;
+}
+const lastWeight = () => S.weights.length ? S.weights[S.weights.length - 1] : null;
+
+function weightChart(){
+  const W = S.weights;
+  if (!W.length) return `<p class="muted">Registra el peso de ${esc(S.pet || 'tu mascota')} cada vez que la peses o vayan al veterinario, y aquí verás cómo cambia.</p>`;
+  const w = 340, h = 150, L = 34, R = 14, T = 16, B = 26;
+  const ts = W.map(p => parse(p.date).getTime()), ks = W.map(p => p.kg);
+  let lo = Math.min(...ks), hi = Math.max(...ks);
+  const padK = Math.max(0.5, (hi - lo) * 0.25); lo = Math.max(0, lo - padK); hi = hi + padK;
+  const t0 = Math.min(...ts), t1 = Math.max(...ts), span = t1 - t0 || 1;
+  const X = t => W.length === 1 ? (L + w - R) / 2 : L + (t - t0) / span * (w - L - R);
+  const Y = k => T + (hi - k) / (hi - lo) * (h - T - B);
+  const ticks = [lo, (lo + hi) / 2, hi];
+  let g = ticks.map(k => `<line x1="${L}" x2="${w - R}" y1="${Y(k).toFixed(1)}" y2="${Y(k).toFixed(1)}" stroke="#F0E1D4" stroke-width="1"/>
+    <text x="${L - 6}" y="${(Y(k) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="#7A6A60">${kgFmt(k)}</text>`).join('');
+  g += `<text x="${L}" y="${h - 6}" font-size="11" fill="#7A6A60">${shortDate(W[0].date)}</text>`;
+  if (W.length > 1) g += `<text x="${w - R}" y="${h - 6}" text-anchor="end" font-size="11" fill="#7A6A60">${shortDate(W[W.length - 1].date)}</text>`;
+  const pts = W.map((p, i) => [X(ts[i]), Y(p.kg)]);
+  if (pts.length > 1){
+    const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+    g += `<path d="${d} L${pts[pts.length-1][0].toFixed(1)} ${h - B} L${pts[0][0].toFixed(1)} ${h - B} Z" fill="#0E7462" fill-opacity=".08"/>`;
+    g += `<path d="${d}" fill="none" stroke="#0E7462" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  g += pts.map((p, i) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${i === pts.length - 1 ? 5 : 4}" fill="#0E7462" stroke="#FFFFFF" stroke-width="2"/>`).join('');
+  const lp = pts[pts.length - 1];
+  g += `<text x="${Math.min(lp[0], w - R).toFixed(1)}" y="${(lp[1] - 10).toFixed(1)}" text-anchor="${pts.length > 1 ? 'end' : 'middle'}" font-size="12" font-weight="700" fill="#2B2420">${kgFmt(W[W.length-1].kg)} kg</text>`;
+  return `<div class="chart" id="wchart" data-w="${w}"><svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Peso de ${esc(S.pet || 'tu mascota')}: ${W.map(p => `${shortDate(p.date)} ${kgFmt(p.kg)} kg`).join(', ')}">${g}</svg><span class="tip" hidden></span></div>`;
+}
+function bindChart(){
+  const c = $('#wchart'); if (!c || S.weights.length < 2) return;
+  const svg = c.querySelector('svg'), tip = c.querySelector('.tip'), W = S.weights, w = +c.dataset.w;
+  const L = 34, R = 14, T = 16, B = 26, h = 150;
+  const ts = W.map(p => parse(p.date).getTime()), t0 = Math.min(...ts), t1 = Math.max(...ts);
+  const ks = W.map(p => p.kg); let lo = Math.min(...ks), hi = Math.max(...ks); const pk = Math.max(0.5, (hi - lo) * .25); lo = Math.max(0, lo - pk); hi += pk;
+  const show = ev => {
+    const r = svg.getBoundingClientRect(), sx = (ev.clientX - r.left) / r.width * w;
+    let best = 0, bd = 1e9;
+    ts.forEach((t, i) => { const x = L + (t - t0) / ((t1 - t0) || 1) * (w - L - R), d = Math.abs(x - sx); if (d < bd){ bd = d; best = i; } });
+    const x = L + (ts[best] - t0) / ((t1 - t0) || 1) * (w - L - R), y = T + (hi - W[best].kg) / (hi - lo) * (h - T - B);
+    tip.textContent = `${shortDate(W[best].date)}: ${kgFmt(W[best].kg)} kg`;
+    tip.style.left = (x / w * r.width) + 'px'; tip.style.top = (y / h * r.height) + 'px'; tip.hidden = false;
+  };
+  svg.addEventListener('pointermove', show); svg.addEventListener('pointerdown', show);
+  svg.addEventListener('pointerleave', () => { tip.hidden = true; });
+}
+
+function renderPet(){
+  const v = $('#view-pet'), p = S.profile, lw = lastWeight();
+  if (p._draft) S.editProfile = true;
+  if (document.activeElement && v.contains(document.activeElement) && document.activeElement.matches('input,select,textarea')) return;
+  const prev = S.weights.length > 1 ? S.weights[S.weights.length - 2] : null;
+  const delta = lw && prev ? lw.kg - prev.kg : null;
+  const facts = [
+    ageText(p.birth) && `<div class="fact"><b>${ageText(p.birth)}</b><span>de edad</span></div>`,
+    lw && `<div class="fact"><b>${kgFmt(lw.kg)} kg</b><span>peso al ${shortDate(lw.date)}</span></div>`,
+    p.breed && `<div class="fact"><b>${esc(p.breed)}</b><span>${p.sex === 'hembra' ? 'hembra' : p.sex === 'macho' ? 'macho' : 'raza'}</span></div>`
+  ].filter(Boolean).join('');
+  v.innerHTML = `
+  ${S.editProfile ? `<form class="card" id="pform" novalidate>
+    <h2>${p._draft ? 'Nueva mascota' : 'Editar datos'}</h2>
+    <div class="field"><label for="p-name">Nombre</label><input type="text" id="p-name" value="${esc(S.pet)}" placeholder="Ej: Luna" autocomplete="off"></div>
+    <div class="two">
+      <div class="field"><label for="p-species">Especie</label><select id="p-species">
+        ${[['perro','Perro'],['gato','Gato'],['otro','Otra']].map(([k,l]) => `<option value="${k}"${(p.species || 'perro') === k ? ' selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label for="p-breed">Raza</label><input type="text" id="p-breed" value="${esc(p.breed || '')}" placeholder="Ej: Mestiza" autocomplete="off"></div>
+    </div>
+    <div class="field"><label>Sexo</label><div class="seg" id="p-sex">
+      ${[['hembra','Hembra'],['macho','Macho']].map(([k,l]) => `<button type="button" data-sex="${k}" aria-pressed="${p.sex === k}">${l}</button>`).join('')}</div></div>
+    <div class="field"><label for="p-birth">Fecha de nacimiento</label><input type="date" id="p-birth" value="${esc(p.birth || '')}" max="${today()}"><span class="hint">Si no la sabes exacta, pon una aproximada.</span></div>
+    <div class="field"><label for="p-vet">Veterinario</label><input type="text" id="p-vet" value="${esc(p.vet || '')}" placeholder="Nombre y clínica" autocomplete="off"></div>
+    <div class="field"><label for="p-notes">Notas</label><textarea id="p-notes" rows="5" placeholder="Ej: alergias, diagnóstico, indicaciones">${esc(p.notes || '')}</textarea></div>
+    <span class="err" id="p-err" hidden></span>
+    <div class="row"><button class="btn" type="submit">${p._draft ? 'Agregar mascota' : 'Guardar datos'}</button><button class="btn text" type="button" data-pcancel>Cancelar</button></div>
+    ${!p._draft && petIds().filter(i => !(S.profiles[i] && S.profiles[i]._draft)).length > 1 ? (S.confirmPetDel
+      ? `<div class="delpet"><span>¿Eliminar a ${esc(S.pet)}? Se borran su perfil, medicamentos y pesos.</span><div class="row"><button class="btn danger small" type="button" data-petdel-yes>Sí, eliminar</button><button class="btn text" type="button" data-petdel-no>Cancelar</button></div></div>`
+      : `<button class="lnk quiet" type="button" data-petdel>Eliminar mascota</button>`) : ''}
+  </form>` : `<div class="card">
+    <div class="medhead"><h2>Datos</h2><button class="btn ghost small" data-pedit>Editar datos</button></div>
+    <dl class="dlist">
+      ${[
+        ['Especie', [p.species === 'gato' ? 'Gato' : p.species === 'otro' ? 'Otra' : 'Perro', p.sex === 'hembra' ? 'hembra' : p.sex === 'macho' ? 'macho' : ''].filter(Boolean).join(', ')],
+        ['Raza', p.breed],
+        ['Nacimiento', p.birth ? `${parse(p.birth).getDate()} de ${MONL[parse(p.birth).getMonth()]} de ${parse(p.birth).getFullYear()} (${ageText(p.birth)})` : ''],
+        ['Veterinario', p.vet],
+        ['Notas', p.notes]
+      ].map(([k, val]) => `<div><dt>${k}</dt><dd${val ? '' : ' class="muted"'}>${val ? esc(val) : 'Sin completar'}</dd></div>`).join('')}
+    </dl>
+  </div>`}
+
+  <div class="card">
+    <h2>Peso</h2>
+    ${lw ? `<div class="weightnow"><b>${kgFmt(lw.kg)} kg</b><span>${shortDate(lw.date)}${delta !== null ? `, <span class="delta">${delta === 0 ? 'sin cambios' : (delta > 0 ? '+' : '−') + kgFmt(Math.abs(delta)) + ' kg'}</span> desde el ${shortDate(prev.date)}` : ''}</span></div>` : ''}
+    ${weightChart()}
+    <form class="inline" id="wform" novalidate>
+      <div class="field"><label for="w-kg">Peso (kg)</label><input type="number" id="w-kg" inputmode="decimal" step="0.1" min="0.1" max="150" placeholder="Ej: 24,5"></div>
+      <div class="field"><label for="w-date">Fecha</label><input type="date" id="w-date" value="${today()}" max="${today()}"></div>
+      <button class="btn" type="submit">Registrar</button>
+    </form>
+    <span class="err" id="w-err" hidden></span>
+    ${S.weights.length ? `<ul class="wlist">${[...S.weights].reverse().slice(0, 6).map(x => `<li><span>${shortDate(x.date)}</span><span><b>${kgFmt(x.kg)} kg</b> <button class="x" data-wdel="${x.id || x.date}" aria-label="Borrar peso del ${shortDate(x.date)}">Borrar</button></span></li>`).join('')}</ul>` : ''}
+  </div>
+
+  <div class="card">
+    <h2>Respaldo</h2>
+    <p class="muted">Guarda una copia de todas tus mascotas, medicamentos, historial y pesos en un archivo.${api && api.canImport ? ' Con ese archivo puedes recuperar todo en otro teléfono.' : ''}</p>
+    <div class="row"><button class="btn ghost small" data-backup>Descargar respaldo</button>${api && api.canImport ? '<button class="btn ghost small" data-restore>Importar respaldo</button>' : ''}</div>
+    ${S.pendingImport ? `<div class="delpet"><span>El archivo trae ${S.pendingImport.meds.length} medicamento${S.pendingImport.meds.length === 1 ? '' : 's'} y ${Object.keys(S.pendingImport.profiles || {}).length || 1} mascota(s). Reemplazará lo que hay en este teléfono.</span><div class="row"><button class="btn danger small" data-import-yes>Reemplazar datos</button><button class="btn text" data-import-no>Cancelar</button></div></div>` : ''}
+  </div>
+`;
+  bindChart();
+}
+
+function readPhoto(file){
+  return new Promise((ok, ko) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const s = 360, c = document.createElement('canvas'); c.width = c.height = s;
+        const m = Math.min(img.width, img.height), sx = (img.width - m) / 2, sy = (img.height - m) / 2;
+        c.getContext('2d').drawImage(img, sx, sy, m, m, 0, 0, s, s);
+        ok(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = ko; img.src = r.result;
+    };
+    r.onerror = ko; r.readAsDataURL(file);
+  });
+}
+function backupData(){
+  return { app: 'pastipet', version: 1, exportedAt: new Date().toISOString(),
+    data: { meds: S.allMeds, pet: S.rootPet, logs: S.logs, weights: S.allWeights,
+      profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)) } };
+}
+async function downloadBackup(){
+  const name = `pastipet-respaldo-${today()}.json`, text = JSON.stringify(backupData());
+  try {
+    const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl){ await dl.save({ filename: name, data: text }); toast('Respaldo descargado'); return; }
+  } catch(e){ if (e && e.code === 'declined') return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast('Respaldo descargado');
+}
+function readBackup(file){
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const j = JSON.parse(r.result), d = j && j.data;
+      if (!j || j.app !== 'pastipet' || !d || !Array.isArray(d.meds)) throw 0;
+      S.pendingImport = d; S.tab = 'pet'; render();
+    } catch(e){ showBanner('Ese archivo no es un respaldo de Pastipet. Elige el archivo que descargaste con «Descargar respaldo».'); }
+  };
+  r.readAsText(file);
+}
+let toastT;
+function toast(msg){ const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2200); }
+function saveProfile(patch){
+  const id = S.petId, cur = { ...(S.profiles[id] || {}) }; delete cur._draft;
+  const next = { ...cur, ...patch };
+  if (id !== 'main' && !next.createdAt) next.createdAt = Date.now();
+  S.profiles = { ...S.profiles, [id]: next }; derive();
+  api.saveProfile(id, next).catch(fail);
+}
+
+/* ---------- Avisos dentro de la app (solo código de la página) ---------- */
+const SNOOZE_KEY = 'pastillero.snooze.v1', SNOOZE_MS = 15 * 60000, LEAD_MIN = 5;
+let snoozeMem = {};
+function loadSnooze(){ try { const r = localStorage.getItem(SNOOZE_KEY); if (r) snoozeMem = JSON.parse(r) || {}; } catch(e){} return snoozeMem; }
+function saveSnooze(){
+  const now = Date.now();
+  for (const k in snoozeMem) if (snoozeMem[k] < now) delete snoozeMem[k];
+  try { localStorage.setItem(SNOOZE_KEY, JSON.stringify(snoozeMem)); } catch(e){}
+}
+const minsOf = hm => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+const nowMins = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
+/* Dosis de hoy sin marcar: atrasadas (ya pasó la hora) y próximas (faltan 5 min o menos) */
+function pendingToday(){
+  if (!S.ready || !S.logsReady) return { due: [], late: [] };
+  const t = today(), log = S.logs[t] || {}, n = nowMins();
+  const open = dayEntriesFor(S.allMeds, t).filter(e => !log[e.key]);
+  return { due: open.filter(e => minsOf(e.t) - n <= LEAD_MIN), late: open.filter(e => minsOf(e.t) <= n) };
+}
+function renderBadge(){
+  const n = pendingToday().late.length, tab = $('#tab-today');
+  let b = tab.querySelector('.badge');
+  if (!n){ if (b) b.remove(); tab.setAttribute('aria-label', 'Hoy'); return; }
+  if (!b){ b = document.createElement('span'); b.className = 'badge'; b.setAttribute('aria-hidden', 'true'); tab.querySelector('.ico').appendChild(b); }
+  b.textContent = n > 9 ? '9+' : n;
+  tab.setAttribute('aria-label', `Hoy, ${n} dosis atrasada${n === 1 ? '' : 's'}`);
+}
+function checkDue(){
+  renderBadge();
+  const box = $('#duepop');
+  if (!$('#sheet').hidden) return; // no interrumpir el formulario
+  const t = today(), sn = loadSnooze(), now = Date.now();
+  const list = pendingToday().due.filter(e => !(sn[t + '|' + e.key] > now));
+  if (!list.length){ box.hidden = true; return; }
+  const n = nowMins(), pets = [...new Set(list.map(e => petOf(e.m)))], many = petIds().length > 1;
+  $('#duepop-title').textContent = pets.length === 1 ? `Le toca a ${petName(pets[0]) || 'tu mascota'}` : 'Dosis pendientes';
+  $('#duepop-list').innerHTML = list.map(e => {
+    const late = minsOf(e.t) <= n;
+    return `<li><span class="pocket${isAlt(e.m) ? ' altp' : ''}" aria-hidden="true"><span class="cap"></span></span>
+      <div class="info"><div class="nm">${many && pets.length > 1 ? `<span class="who-t">${esc(petName(petOf(e.m)))}</span> ` : ''}${esc(e.m.name)}</div><div class="sub">${esc(e.m.dose || '')}${e.m.dose ? ', ' : ''}<span class="${late ? 'late-t' : ''}">${late ? 'era a las' : 'a las'} ${e.t}</span></div></div>
+      <button class="btn small" data-popgive="${e.key}">Marcar como dada</button></li>`;
+  }).join('');
+  $('#duepop').dataset.keys = list.map(e => e.key).join(',');
+  if (box.hidden){ box.hidden = false; setTimeout(() => { const f = box.querySelector('[data-popgive]'); f && f.focus({ preventScroll: true }); }, 30); }
+}
+function snoozeDue(){
+  const t = today(), until = Date.now() + SNOOZE_MS;
+  loadSnooze();
+  ($('#duepop').dataset.keys || '').split(',').filter(Boolean).forEach(k => { snoozeMem[t + '|' + k] = until; });
+  saveSnooze();
+  $('#duepop').hidden = true;
+  toast('Te aviso de nuevo en 15 minutos');
+}
+function giveFromPopup(key){
+  const t = today();
+  if (!(S.logs[t] || {})[key]) toggleDose(t, key);
+  checkDue();
+  if ($('#duepop').hidden) toast('Dosis marcada');
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && api){ render(); checkDue(); } });
+
+/* ---------- Formulario ---------- */
+let editing = null, fDays = [];
+function addTimeRow(val){
+  const w = document.createElement('div'); w.className = 't';
+  const n = $('#f-times').children.length;
+  w.innerHTML = `<input type="time" id="f-time-${n}" value="${val || ''}"><button type="button" class="btn ghost small" aria-label="Quitar horario">Quitar</button>`;
+  w.querySelector('button').onclick = () => { w.remove(); updatePreview(); };
+  w.querySelector('input').oninput = updatePreview;
+  $('#f-times').appendChild(w);
+}
+function formMed(){
+  const fv = $('#f-freq').value;
+  return {
+    name: $('#f-name').value.trim(), dose: $('#f-dose').value.trim(),
+    times: [...new Set([...$('#f-times').querySelectorAll('input')].map(i => i.value).filter(Boolean))].sort(),
+    freq: fv === 'alt' ? 'interval' : fv,
+    every: fv === 'alt' ? 2 : fv === 'interval' ? Math.max(2, Math.min(30, parseInt($('#f-every').value, 10) || 2)) : 1,
+    days: fv === 'weekdays' ? [...fDays] : [],
+    start: $('#f-start').value || today(), end: $('#f-end').value || '',
+    notes: $('#f-notes').value.trim()
+  };
+}
+function updateFreqUI(){
+  const fv = $('#f-freq').value;
+  $('#f-every-wrap').hidden = fv !== 'interval';
+  $('#f-days-wrap').hidden = fv !== 'weekdays';
+  $('#f-parity').hidden = !(fv === 'alt' || fv === 'interval');
+  updatePreview();
+}
+function updatePreview(){
+  const m = formMed(), t = today();
+  let h = '';
+  for (let i = 0; i < 7; i++){
+    const d = addDays(t, i), x = parse(d), y = isDue(m, d);
+    h += `<div class="${y ? 'y' : ''}">${i === 0 ? 'Hoy' : DOW[x.getDay()]}<b>${y ? '✓' : '–'}</b></div>`;
+  }
+  $('#f-preview').innerHTML = h;
+}
+function renderChips(){
+  $('#f-days').innerHTML = CHIP.map(([v, l]) => `<button type="button" aria-pressed="${fDays.includes(v)}" data-chip="${v}" aria-label="${DOWL[v]}">${l}</button>`).join('');
+}
+function openForm(m){
+  editing = m ? m.id : null;
+  $('#form-title').textContent = (m ? 'Editar medicamento' : 'Nuevo medicamento') + (petIds().length > 1 && S.pet ? ` de ${S.pet}` : '');
+  $('#f-name').value = m?.name || ''; $('#f-dose').value = m?.dose || '';
+  $('#f-times').innerHTML = ''; (m?.times?.length ? m.times : ['08:00','20:00']).forEach(addTimeRow);
+  $('#f-freq').value = !m ? 'daily' : m.freq === 'interval' ? (m.every == 2 ? 'alt' : 'interval') : m.freq;
+  $('#f-every').value = m?.freq === 'interval' && m.every != 2 ? m.every : 3;
+  fDays = m?.days ? [...m.days] : [1,3,5]; renderChips();
+  $('#f-start').value = m?.start || today(); $('#f-end').value = m?.end || '';
+  $('#f-notes').value = m?.notes || '';
+  $('#f-err').hidden = true;
+  updateFreqUI();
+  $('#sheet').hidden = false;
+  setTimeout(() => $('#f-name').focus(), 30);
+}
+function closeForm(){ $('#sheet').hidden = true; editing = null; }
+
+$('#f-addtime').onclick = () => { addTimeRow('12:00'); updatePreview(); };
+$('#f-freq').onchange = updateFreqUI;
+['#f-every','#f-start','#f-end'].forEach(s => $(s).addEventListener('input', updatePreview));
+$('#f-days').onclick = e => { const b = e.target.closest('[data-chip]'); if (!b) return; const v = +b.dataset.chip;
+  fDays = fDays.includes(v) ? fDays.filter(x => x !== v) : [...fDays, v]; renderChips(); updatePreview(); };
+$('#f-today-yes').onclick = () => { $('#f-start').value = today(); updatePreview(); };
+$('#f-today-no').onclick = () => { $('#f-start').value = addDays(today(), 1); updatePreview(); };
+$('#f-cancel').onclick = closeForm;
+$('#sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeForm(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeForm(); });
+$('#form').addEventListener('submit', e => {
+  e.preventDefault();
+  const m = formMed(), err = $('#f-err');
+  if (!m.name){ err.textContent = 'Escribe el nombre del medicamento.'; err.hidden = false; return; }
+  if (!m.times.length){ err.textContent = 'Agrega al menos un horario.'; err.hidden = false; return; }
+  if (m.freq === 'weekdays' && !m.days.length){ err.textContent = 'Elige al menos un día de la semana.'; err.hidden = false; return; }
+  if (m.end && m.end < m.start){ err.textContent = 'La fecha “hasta” debe ser posterior a “desde”.'; err.hidden = false; return; }
+  m.id = editing || ('m' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
+  const prev = editing && S.meds.find(x => x.id === editing);
+  if (prev){
+    m.reminderIds = prev.reminderIds || [];
+    const keys = ['name','dose','times','freq','every','days','start','end','notes'];
+    const changed = keys.some(k => JSON.stringify(prev[k] ?? '') !== JSON.stringify(m[k] ?? ''));
+    m.remindersStale = !!prev.remindersStale || (m.reminderIds.length > 0 && changed);
+    m.remindersPending = !!prev.remindersPending;
+    m.finished = !!prev.finished;
+    S.remMsg[m.id] = '';
+  }
+  m.petId = prev ? petOf(prev) : S.petId;
+  S.allMeds = editing ? S.allMeds.map(x => x.id === editing ? m : x) : [...S.allMeds, m];
+  closeForm(); render();
+  api.saveMed(m).catch(fail);
+});
+
+/* ---------- Eventos ---------- */
+$('#tab-today').onclick = () => { S.tab = 'today'; render(); };
+$('#tab-meds').onclick = () => { S.tab = 'meds'; S.confirmDel = null; render(); };
+$('#tab-pet').onclick = () => { S.tab = 'pet'; render(); scrollTo(0, 0); };
+$('#hphoto').onclick = () => { if (S.tab === 'pet') $('#photo-input').click(); else { S.tab = 'pet'; render(); scrollTo(0, 0); } };
+$('#restore-input').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) readBackup(f); });
+$('#photo-input').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!f || !api) return;
+  try { saveProfile({ photo: await readPhoto(f) }); render(); toast('Foto guardada'); }
+  catch(err){ showBanner('No se pudo leer esa imagen. Prueba con una foto JPG o PNG.'); }
+});
+document.addEventListener('submit', e => {
+  if (!api) return;
+  if (e.target.id === 'wform'){
+    e.preventDefault();
+    const kg = parseFloat(String($('#w-kg').value).replace(',', '.')), date = $('#w-date').value || today(), err = $('#w-err');
+    if (!(kg > 0 && kg < 200)){ err.textContent = 'Escribe el peso en kilos, por ejemplo 24,5.'; err.hidden = false; return; }
+    const pid = S.petId, w = { id: pid === 'main' ? date : `${pid}_${date}`, petId: pid, date, kg: Math.round(kg * 10) / 10 };
+    S.allWeights = [...S.allWeights.filter(x => x.id !== w.id), w]; derive();
+    document.activeElement && document.activeElement.blur(); render();
+    api.setWeight(w).catch(fail); toast('Peso registrado');
+  } else if (e.target.id === 'pform'){
+    e.preventDefault();
+    const name = $('#p-name').value.trim();
+    const sexB = document.querySelector('#p-sex [aria-pressed="true"]');
+    const perr = $('#p-err');
+    if (!name){ if (perr){ perr.textContent = 'Escribe el nombre de tu mascota.'; perr.hidden = false; } return; }
+    if (S.petId === 'main'){ if (name !== S.rootPet){ S.rootPet = name; api.setPet(name).catch(fail); } }
+    saveProfile({ name, species: $('#p-species').value, breed: $('#p-breed').value.trim(), sex: sexB ? sexB.dataset.sex : '', birth: $('#p-birth').value, vet: $('#p-vet').value.trim(), notes: $('#p-notes').value.trim() });
+    S.editProfile = false; document.activeElement && document.activeElement.blur(); render(); scrollTo(0, 0);
+    toast('Datos guardados');
+  }
+});
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || !api) return;
+  if (b.dataset.day){ S.sel = b.dataset.day; render(); }
+  else if (b.dataset.shift){ S.sel = addDays(S.sel, +b.dataset.shift); render(); }
+  else if (b.dataset.dose){ toggleDose(S.sel, b.dataset.dose); }
+  else if (b.hasAttribute('data-new')) openForm(null);
+  else if (b.dataset.edit) openForm(S.meds.find(m => m.id === b.dataset.edit));
+  else if (b.dataset.del){ S.confirmDel = b.dataset.del; S.confirmEnd = null; render(); }
+  else if (b.hasAttribute('data-del-no')){ S.confirmDel = null; render(); }
+  else if (b.dataset.pet){ if (b.dataset.pet !== S.petId) selectPet(b.dataset.pet); }
+  else if (b.hasAttribute('data-addpet')){
+    for (const k in S.profiles) if (S.profiles[k]._draft) delete S.profiles[k];
+    const id = 'p' + Date.now().toString(36);
+    S.profiles = { ...S.profiles, [id]: { _draft: true, species: 'perro' } };
+    S.tab = 'pet'; selectPet(id); setTimeout(() => { const f = $('#p-name'); f && f.focus(); }, 60);
+  }
+  else if (b.hasAttribute('data-petdel')){ S.confirmPetDel = true; render(); }
+  else if (b.hasAttribute('data-petdel-no')){ S.confirmPetDel = false; render(); }
+  else if (b.hasAttribute('data-petdel-yes')){
+    const id = S.petId, name = S.pet;
+    const meds = S.allMeds.filter(m => petOf(m) === id), ws = S.allWeights.filter(w => (w.petId || 'main') === id);
+    S.allMeds = S.allMeds.filter(m => petOf(m) !== id); S.allWeights = S.allWeights.filter(w => (w.petId || 'main') !== id);
+    const P = { ...S.profiles }; delete P[id]; S.profiles = P;
+    meds.forEach(m => api.delMed(m.id).catch(fail)); ws.forEach(w => api.delWeight(w.id || w.date).catch(fail));
+    api.delProfile ? api.delProfile(id).catch(fail) : null;
+    if (id === 'main'){ S.rootPet = ''; api.setPet('').catch(fail); }
+    S.confirmPetDel = false; S.editProfile = false; S.tab = 'today';
+    selectPet(petIds()[0] || 'main'); toast(`${name || 'Mascota'} eliminada`);
+  }
+  else if (b.hasAttribute('data-backup')) downloadBackup();
+  else if (b.hasAttribute('data-restore')) $('#restore-input').click();
+  else if (b.hasAttribute('data-import-no')){ S.pendingImport = null; render(); }
+  else if (b.hasAttribute('data-import-yes')){ const d = S.pendingImport; S.pendingImport = null; api.importAll(d).then(() => { S.petId = 'main'; derive(); render(); toast('Datos importados'); }).catch(fail); }
+  else if (b.dataset.popgive) giveFromPopup(b.dataset.popgive);
+  else if (b.id === 'duepop-later') snoozeDue();
+  else if (b.hasAttribute('data-photo')) $('#photo-input').click();
+  else if (b.dataset.end){ S.confirmEnd = b.dataset.end; S.confirmDel = null; render(); }
+  else if (b.hasAttribute('data-end-no')){ S.confirmEnd = null; render(); }
+  else if (b.dataset.endYes){
+    const m = S.meds.find(x => x.id === b.dataset.endYes), d = ($('#end-date') && $('#end-date').value) || today();
+    if (m){ const nm = { ...m, end: d < m.start ? m.start : d, finished: true }; S.confirmEnd = null; putMed(nm); render(); toast('Tratamiento terminado'); }
+  }
+  else if (b.dataset.resume){ const m = S.meds.find(x => x.id === b.dataset.resume); if (m){ putMed({ ...m, end: '', finished: false }); render(); toast('Tratamiento reanudado'); } }
+  else if (b.hasAttribute('data-pedit')){ S.editProfile = true; render(); setTimeout(() => { const f = $('#pform'); f && f.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 30); }
+  else if (b.hasAttribute('data-pcancel')){
+    if (S.profile._draft){ const P = { ...S.profiles }; delete P[S.petId]; S.profiles = P; S.tab = 'today'; selectPet(petIds()[0] || 'main'); }
+    else { S.editProfile = false; S.confirmPetDel = false; render(); }
+  }
+  else if (b.hasAttribute('data-photo-del')){ saveProfile({ photo: '' }); render(); }
+  else if (b.dataset.sex){ b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b && x.getAttribute('aria-pressed') !== 'true')); }
+  else if (b.dataset.wdel){ const d = b.dataset.wdel; S.allWeights = S.allWeights.filter(x => x.id !== d); render(); api.delWeight(d).catch(fail); }
+  else if (b.dataset.rem) syncReminders(b.dataset.rem);
+  else if (b.hasAttribute('data-copy')) copyPhrase(b);
+  else if (b.dataset.delYes){ const id = b.dataset.delYes; S.allMeds = S.allMeds.filter(m => m.id !== id); S.confirmDel = null; render(); api.delMed(id).catch(fail); }
+});
+
+// Refresca estados (pendiente/atrasada) y el cambio de día
+let lastDay = today();
+setInterval(() => { const t = today(); if (t !== lastDay){ if (S.sel === lastDay) S.sel = t; lastDay = t; } if (S.tab === 'today' && $('#sheet').hidden) render(); else checkDue(); }, 60000);
+
+render();
+init();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>

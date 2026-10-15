@@ -1,0 +1,17 @@
+{
+  "name": "Pastipet",
+  "short_name": "Pastipet",
+  "description": "Pastillero para mascotas: medicamentos, horarios y avisos para perros y gatos.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FCF3EA",
+  "theme_color": "#FCF3EA",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
