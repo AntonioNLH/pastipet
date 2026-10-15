@@ -655,6 +655,7 @@ function renderToday(){
     html += `</ul></section>`;
   }
   if (date !== t) html += `<div><button class="btn ghost small" data-day="${t}">Volver a hoy</button></div>`;
+  html += badgeCard();
   v.innerHTML = html;
 }
 
@@ -958,7 +959,34 @@ function pendingToday(){
   const open = dayEntriesFor(S.allMeds, t).filter(e => !log[e.key]);
   return { due: open.filter(e => minsOf(e.t) - n <= LEAD_MIN), late: open.filter(e => minsOf(e.t) <= n) };
 }
+/* Globo rojo en el ícono de la app (iPhone con iOS 16.4+, app instalada) */
+const canIconBadge = () => 'setAppBadge' in navigator && typeof Notification !== 'undefined';
+const isInstalled = () => !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
+let lastIconBadge = -1;
+function updateIconBadge(){
+  if (!canIconBadge() || !S.ready || !S.logsReady) return;
+  const t = today(), log = S.logs[t] || {};
+  const n = dayEntriesFor(S.allMeds, t).filter(e => !log[e.key]).length;
+  if (n === lastIconBadge) return;
+  lastIconBadge = n;
+  try { (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}
+}
+function badgeCard(){
+  if (!canIconBadge() || !isInstalled()) return '';
+  const p = Notification.permission;
+  if (p === 'granted') return '';
+  if (p === 'denied') return `<div class="note"><b>Globo en el ícono desactivado</b>Para ver en el ícono cuántas dosis faltan hoy, activa las notificaciones de Pastipet en Ajustes del iPhone, en Notificaciones.</div>`;
+  return `<div class="note"><b>Globo en el ícono</b>Muestra en el ícono de Pastipet cuántas dosis le faltan hoy a tus mascotas, como los mensajes sin leer.<div><button class="btn small" data-iconbadge style="margin-top:8px">Activar globo en el ícono</button></div></div>`;
+}
+async function enableIconBadge(){
+  try {
+    const r = await Notification.requestPermission();
+    if (r === 'granted'){ lastIconBadge = -1; updateIconBadge(); toast('Globo activado'); }
+    render();
+  } catch(e){ render(); }
+}
 function renderBadge(){
+  updateIconBadge();
   const n = pendingToday().late.length, tab = $('#tab-today');
   let b = tab.querySelector('.badge');
   if (!n){ if (b) b.remove(); tab.setAttribute('aria-label', 'Hoy'); return; }
@@ -998,7 +1026,10 @@ function giveFromPopup(key){
   checkDue();
   if ($('#duepop').hidden) toast('Dosis marcada');
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && api){ render(); checkDue(); } });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && api){ lastIconBadge = -1; render(); checkDue(); }
+  else if (document.visibilityState === 'hidden'){ lastIconBadge = -1; updateIconBadge(); }
+});
 
 /* ---------- Formulario ---------- */
 let editing = null, fDays = [];
@@ -1155,6 +1186,7 @@ document.addEventListener('click', e => {
     S.confirmPetDel = false; S.editProfile = false; S.tab = 'today';
     selectPet(petIds()[0] || 'main'); toast(`${name || 'Mascota'} eliminada`);
   }
+  else if (b.hasAttribute('data-iconbadge')) enableIconBadge();
   else if (b.hasAttribute('data-backup')) downloadBackup();
   else if (b.hasAttribute('data-restore')) $('#restore-input').click();
   else if (b.hasAttribute('data-import-no')){ S.pendingImport = null; render(); }
