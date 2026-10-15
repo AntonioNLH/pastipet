@@ -555,7 +555,7 @@ function localApi(){
   try { const raw = localStorage.getItem(KEY); if (raw) data = { ...data, ...JSON.parse(raw) }; } catch(e){}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ meds: S.allMeds, pet: S.rootPet, logs: S.logs, profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)), weights: S.allWeights })); } catch(e){} return Promise.resolve(); };
   return {
-    label: 'Guardado en este teléfono',
+    label: 'Guardado en este teléfono. Versión 3.',
     start(){ S.allMeds = data.meds || []; S.rootPet = data.pet || ''; S.logs = data.logs || {}; S.profiles = data.profiles || (data.profile ? { main: data.profile } : {}); S.allWeights = (data.weights || []).map(w => ({ id: w.id || w.date, ...w })); S.ready = true; S.logsReady = true; render(); },
     saveMed: save, delMed: save, setPet: save, setDoses: save, saveProfile: save, delProfile: save, setWeight: save, delWeight: save,
     canImport: true,
@@ -614,7 +614,7 @@ function renderToday(){
   if (!S.meds.length){
     v.innerHTML = `<div class="empty"><h2>El pastillero está vacío</h2>
       <p>Agrega cada medicamento con su dosis, horarios y qué días le toca. Aquí verás las dosis del día para marcarlas a medida que las das.</p>
-      <button class="btn" data-new>Agregar medicamento</button></div>`;
+      <button class="btn" data-new>Agregar medicamento</button></div>` + badgeCard();
     return;
   }
   const es = dayEntries(date), done = es.filter(e => log[e.key]).length, left = es.length - done, now = nowHM();
@@ -878,6 +878,7 @@ function renderPet(){
     ${S.weights.length ? `<ul class="wlist">${[...S.weights].reverse().slice(0, 6).map(x => `<li><span>${shortDate(x.date)}</span><span><b>${kgFmt(x.kg)} kg</b> <button class="x" data-wdel="${x.id || x.date}" aria-label="Borrar peso del ${shortDate(x.date)}">Borrar</button></span></li>`).join('')}</ul>` : ''}
   </div>
 
+  ${typeof Notification !== 'undefined' || 'setAppBadge' in navigator || isInstalled() ? badgeSettings() : ''}
   <div class="card">
     <h2>Respaldo</h2>
     <p class="muted">Guarda una copia de todas tus mascotas, medicamentos, historial y pesos en un archivo.${api && api.canImport ? ' Con ese archivo puedes recuperar todo en otro teléfono.' : ''}</p>
@@ -970,6 +971,19 @@ function updateIconBadge(){
   if (n === lastIconBadge) return;
   lastIconBadge = n;
   try { (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}
+}
+function badgeStatus(){
+  if (!isInstalled()) return { s: 'web', txt: 'Abre Pastipet desde su ícono en la pantalla de inicio, no desde Safari. El globo solo funciona en la app instalada.' };
+  if (!canIconBadge()) return { s: 'old', txt: 'Este iPhone no permite globos en apps web. Necesita iOS 16.4 o superior (Ajustes, General, Actualización de software).' };
+  const p = Notification.permission;
+  if (p === 'granted') return { s: 'on', txt: 'Activado. Al salir de la app, el ícono muestra cuántas dosis faltan hoy.' };
+  if (p === 'denied') return { s: 'off', txt: 'Bloqueado. Actívalo en Ajustes del iPhone, en Notificaciones, Pastipet, y permite Globos.' };
+  return { s: 'ask', txt: 'Muestra en el ícono cuántas dosis le faltan hoy a tus mascotas, como los mensajes sin leer.' };
+}
+function badgeSettings(){
+  const st = badgeStatus();
+  return `<div class="card"><h2>Globo en el ícono</h2><p class="${st.s === 'on' ? 'ok' : 'muted'}">${st.txt}</p>
+    ${st.s === 'ask' ? '<div><button class="btn small" data-iconbadge>Activar globo en el ícono</button></div>' : ''}</div>`;
 }
 function badgeCard(){
   if (!canIconBadge() || !isInstalled()) return '';
