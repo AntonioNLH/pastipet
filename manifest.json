@@ -1,17 +1,27 @@
 {
+  "id": "./",
   "name": "Pastipet",
   "short_name": "Pastipet",
   "description": "Pastillero para mascotas: medicamentos, horarios y avisos para perros y gatos.",
-  "lang": "es",
+  "lang": "es-CL",
+  "dir": "ltr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone"],
   "orientation": "portrait",
   "background_color": "#FCF3EA",
   "theme_color": "#FCF3EA",
+  "categories": ["health", "lifestyle", "medical"],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "badge-96.png", "sizes": "96x96", "type": "image/png", "purpose": "monochrome" }
+  ],
+  "shortcuts": [
+    { "name": "Dosis de hoy", "short_name": "Hoy", "url": "./?tab=today", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Agregar medicamento", "short_name": "Agregar", "url": "./?tab=meds&new=1", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] },
+    { "name": "Perfil de la mascota", "short_name": "Perfil", "url": "./?tab=pet", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] }
   ]
 }

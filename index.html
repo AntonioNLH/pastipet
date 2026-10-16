@@ -13,6 +13,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Pastipet">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<meta name="application-name" content="Pastipet">
 <style>html{-webkit-text-size-adjust:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px)}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fredoka:wght@500;600&display=swap">
@@ -264,6 +266,15 @@ textarea{resize:vertical;min-height:64px}
 .err{color:var(--amber);font-weight:700;font-size:.9rem}
 @media (max-width:380px){.facts{grid-template-columns:1fr 1fr}}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+/* Sensación de app nativa en iPhone y Android */
+html{-webkit-tap-highlight-color:transparent}
+body{overscroll-behavior-y:none}
+button,.tabbar,.lid{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+.set{display:flex;flex-direction:column;gap:6px;padding-top:14px;border-top:1px dashed var(--rule)}
+.set:first-of-type{border-top:0;padding-top:0}
+.set > b{font-size:1rem}
+.set p{margin:0}
+.set .lim{font-size:.86rem}
 </style>
 </head>
 <body>
@@ -555,7 +566,7 @@ function localApi(){
   try { const raw = localStorage.getItem(KEY); if (raw) data = { ...data, ...JSON.parse(raw) }; } catch(e){}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ meds: S.allMeds, pet: S.rootPet, logs: S.logs, profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)), weights: S.allWeights })); } catch(e){} return Promise.resolve(); };
   return {
-    label: 'Guardado en este teléfono. Versión 3.',
+    label: 'Guardado en este teléfono. Versión 4.',
     start(){ S.allMeds = data.meds || []; S.rootPet = data.pet || ''; S.logs = data.logs || {}; S.profiles = data.profiles || (data.profile ? { main: data.profile } : {}); S.allWeights = (data.weights || []).map(w => ({ id: w.id || w.date, ...w })); S.ready = true; S.logsReady = true; render(); },
     saveMed: save, delMed: save, setPet: save, setDoses: save, saveProfile: save, delProfile: save, setWeight: save, delWeight: save,
     canImport: true,
@@ -581,7 +592,7 @@ const fail = () => showBanner('No se pudo guardar el último cambio. Revisa tu c
 /* ---------- Acciones ---------- */
 function toggleDose(date, key){
   const cur = { ...(S.logs[date] || {}) };
-  if (cur[key]) delete cur[key]; else cur[key] = Date.now();
+  if (cur[key]) delete cur[key]; else { cur[key] = Date.now(); vib(); if (date === today()) closeNotifs(key); }
   S.logs = { ...S.logs, [date]: cur };
   render();
   api.setDoses(date, cur).catch(fail);
@@ -878,7 +889,7 @@ function renderPet(){
     ${S.weights.length ? `<ul class="wlist">${[...S.weights].reverse().slice(0, 6).map(x => `<li><span>${shortDate(x.date)}</span><span><b>${kgFmt(x.kg)} kg</b> <button class="x" data-wdel="${x.id || x.date}" aria-label="Borrar peso del ${shortDate(x.date)}">Borrar</button></span></li>`).join('')}</ul>` : ''}
   </div>
 
-  ${typeof Notification !== 'undefined' || 'setAppBadge' in navigator || isInstalled() ? badgeSettings() : ''}
+  ${appSettings()}
   <div class="card">
     <h2>Respaldo</h2>
     <p class="muted">Guarda una copia de todas tus mascotas, medicamentos, historial y pesos en un archivo.${api && api.canImport ? ' Con ese archivo puedes recuperar todo en otro teléfono.' : ''}</p>
@@ -960,9 +971,147 @@ function pendingToday(){
   const open = dayEntriesFor(S.allMeds, t).filter(e => !log[e.key]);
   return { due: open.filter(e => minsOf(e.t) - n <= LEAD_MIN), late: open.filter(e => minsOf(e.t) <= n) };
 }
-/* Globo rojo en el ícono de la app (iPhone con iOS 16.4+, app instalada) */
-const canIconBadge = () => 'setAppBadge' in navigator && typeof Notification !== 'undefined';
-const isInstalled = () => !!(navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches));
+/* ---------- Experiencia de app (iPhone y Android) ---------- */
+const UA = navigator.userAgent || '';
+const IS_IOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const IS_ANDROID = /Android/i.test(UA);
+const PHONE = IS_IOS ? 'iPhone' : IS_ANDROID ? 'Android' : '';
+const canIconBadge = () => 'setAppBadge' in navigator;
+const isInstalled = () => !!(navigator.standalone || (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches)));
+const canNotify = () => typeof Notification !== 'undefined' && 'serviceWorker' in navigator && (!IS_IOS || isInstalled());
+const notifPerm = () => typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+const vib = ms => { try { navigator.vibrate && navigator.vibrate(ms || 12); } catch(e){} };
+
+/* Instalación */
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; render(); });
+addEventListener('appinstalled', () => { installEvt = null; toast('Pastipet quedó instalada'); render(); });
+function installHow(){
+  if (IS_IOS) return 'Toca el botón Compartir (el cuadrado con la flecha hacia arriba) y elige «Agregar a inicio». En Chrome, Compartir está arriba, junto a la dirección.';
+  if (IS_ANDROID) return 'En Chrome, toca el menú ⋮ (arriba a la derecha) y elige «Instalar app» o «Agregar a la pantalla principal».';
+  return 'En Chrome o Edge, usa el ícono de instalar que aparece a la derecha de la barra de direcciones.';
+}
+async function doInstall(){
+  if (!installEvt) return;
+  const ev = installEvt; installEvt = null;
+  try { ev.prompt(); await ev.userChoice; } catch(e){}
+  render();
+}
+const HIDE_KEY = 'pastipet.hide.v1';
+function tipHidden(k){ try { return !!JSON.parse(localStorage.getItem(HIDE_KEY) || '{}')[k]; } catch(e){ return false; } }
+function hideTip(k){ try { const o = JSON.parse(localStorage.getItem(HIDE_KEY) || '{}'); o[k] = 1; localStorage.setItem(HIDE_KEY, JSON.stringify(o)); } catch(e){} render(); }
+
+/* Avisos del sistema */
+function notifStatus(){
+  if (IS_IOS && !isInstalled()) return { s: 'web', txt: 'Primero instala Pastipet en tu pantalla de inicio. En iPhone, los avisos y el número en el ícono solo funcionan en la app instalada.' };
+  if (!canNotify()) return { s: 'no', txt: IS_IOS ? 'Este iPhone no permite avisos en apps web. Necesita iOS 16.4 o superior (Ajustes, General, Actualización de software).' : 'Este navegador no permite avisos. Abre Pastipet en Chrome.' };
+  const p = notifPerm();
+  if (p === 'granted') return { s: 'on', txt: IS_IOS
+    ? 'Activados. Cuando le toque una dosis verás el aviso, y al salir de la app el ícono muestra cuántas dosis faltan hoy.'
+    : IS_ANDROID ? 'Activados. Cuando le toque una dosis verás el aviso con sonido y vibración, con los botones «Marcar como dada» y «En 15 min». El ícono muestra un punto mientras haya un aviso.'
+    : 'Activados. Cuando le toque una dosis verás un aviso del sistema.' };
+  if (p === 'denied') return { s: 'off', txt: IS_IOS
+    ? 'Bloqueados. Actívalos en Ajustes del iPhone, en Notificaciones, Pastipet, y permite también Globos.'
+    : IS_ANDROID ? 'Bloqueados. Actívalos en Ajustes de Android, en Apps, Pastipet, Notificaciones. Si la usas en Chrome, toca el ícono a la izquierda de la dirección y permite Notificaciones.'
+    : 'Bloqueados. Permítelos en la configuración del sitio de tu navegador.' };
+  return { s: 'ask', txt: `Te aviso cuando le toque una dosis${canIconBadge() && IS_IOS ? ' y el ícono muestra cuántas faltan hoy, como los mensajes sin leer' : ''}.` };
+}
+function notifLimit(){
+  if (IS_IOS) return 'En iPhone el aviso sale con Pastipet abierta. Con la app cerrada, el número en el ícono te recuerda lo que falta.';
+  return 'Los avisos llegan con Pastipet abierta o minimizada. Si la cierras del todo, te avisa apenas la vuelvas a abrir.';
+}
+async function enableNotifs(){
+  try {
+    const r = await Notification.requestPermission();
+    if (r === 'granted'){ lastIconBadge = -1; updateIconBadge(); toast('Avisos activados'); vib(); }
+  } catch(e){}
+  render();
+}
+async function sysNotify(title, body, tag, data){
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const dose = !!(data && data.key);
+    await reg.showNotification(title, { body, tag, renotify: true, lang: 'es-CL', icon: 'icon-192.png', badge: 'badge-96.png',
+      vibrate: [200, 100, 200], requireInteraction: dose && IS_ANDROID, data: data || {},
+      actions: dose ? [{ action: 'give', title: 'Marcar como dada' }, { action: 'later', title: 'En 15 min' }] : [] });
+    return true;
+  } catch(e){ return false; }
+}
+async function testNotif(){
+  const ok = await sysNotify('Pastipet', `Así se verán los avisos de las dosis de ${S.pet || 'tu mascota'}.`, 'test', {});
+  toast(ok ? (IS_IOS ? 'Aviso enviado' : 'Aviso enviado, mira la barra de notificaciones') : 'No se pudo mostrar el aviso');
+}
+async function closeNotifs(key){
+  try {
+    const reg = await navigator.serviceWorker.getRegistration(); if (!reg || !reg.getNotifications) return;
+    (await reg.getNotifications()).forEach(n => { if (key ? n.tag === 'dose-' + key : n.tag.startsWith('dose-')) n.close(); });
+  } catch(e){}
+}
+const NOTIFIED_KEY = 'pastipet.notified.v1';
+function notifiedMap(){ try { return JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '{}') || {}; } catch(e){ return {}; } }
+function saveNotified(o){ const t = today(); for (const k in o) if (!k.startsWith(t + '|')) delete o[k]; try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(o)); } catch(e){} }
+function forgetNotified(key){ const o = notifiedMap(); for (const k in o) if (k.split('|')[1] === key) delete o[k]; saveNotified(o); }
+function notifyDue(list){
+  if (!list.length || document.visibilityState !== 'hidden' || notifPerm() !== 'granted' || !canNotify()) return;
+  const t = today(), n = nowMins(), o = notifiedMap(); let ch = false;
+  list.forEach(e => {
+    const late = n >= minsOf(e.t) + LEAD_MIN, id = `${t}|${e.key}|${late ? 'late' : 'pre'}`;
+    if (o[id]) return; o[id] = 1; ch = true;
+    const pet = petName(petOf(e.m)) || 'tu mascota';
+    sysNotify(late ? `¿Ya le diste ${e.m.name} a ${pet}?` : `Le toca a ${pet}`,
+      late ? `Era a las ${e.t}.${IS_IOS ? ' Toca para abrir Pastipet y marcarla.' : ''}` : `${e.m.name}${e.m.dose ? ', ' + e.m.dose : ''}, a las ${e.t}.`,
+      'dose-' + e.key, { key: e.key, date: t });
+  });
+  if (ch) saveNotified(o);
+}
+/* Programa la próxima revisión justo a la hora exacta (5 min antes, a la hora y 5 min después) */
+let alertT = null;
+function planAlerts(){
+  clearTimeout(alertT);
+  if (!S.ready || !S.logsReady) return;
+  const t = today(), log = S.logs[t] || {}, d = new Date(), now = d.getTime();
+  const base = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  let next = Infinity;
+  dayEntriesFor(S.allMeds, t).filter(e => !log[e.key]).forEach(e => {
+    [-LEAD_MIN, 0, LEAD_MIN].forEach(o => { const at = base + (minsOf(e.t) + o) * 60000; if (at > now && at < next) next = at; });
+  });
+  const sn = loadSnooze(); for (const k in sn) if (sn[k] > now && sn[k] < next) next = sn[k];
+  if (next < Infinity) alertT = setTimeout(checkDue, Math.min(next - now + 800, 2147000000));
+}
+
+/* Acciones que llegan desde un aviso o un acceso directo del ícono */
+let pendingActs = [];
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { const d = e.data || {}; if (d.type === 'dose'){ pendingActs.push(d); runActions(); } });
+(function readLaunch(){
+  const q = new URLSearchParams(location.search); if (![...q.keys()].length) return;
+  const tab = q.get('tab'); if (['today','meds','pet'].includes(tab)) S.tab = tab;
+  if (q.get('act')) pendingActs.push({ action: q.get('act'), key: q.get('key'), date: q.get('d') });
+  if (q.get('new')) pendingActs.push({ action: 'new' });
+  try { history.replaceState(null, '', location.pathname); } catch(e){}
+})();
+function runActions(){
+  if (!api || !S.ready || !S.logsReady || !pendingActs.length) return;
+  const acts = pendingActs; pendingActs = [];
+  const t = today();
+  acts.forEach(a => {
+    if (a.action === 'new'){ setTimeout(() => openForm(null), 50); return; }
+    S.tab = 'today'; S.sel = t;
+    if (!a.key || (a.date && a.date !== t)) return;
+    if (a.action === 'give'){ if (!(S.logs[t] || {})[a.key]) toggleDose(t, a.key); toast('Dosis marcada'); }
+    else if (a.action === 'later'){ loadSnooze(); snoozeMem[t + '|' + a.key] = Date.now() + SNOOZE_MS; saveSnooze(); forgetNotified(a.key); toast('Te aviso de nuevo en 15 minutos'); }
+  });
+  render();
+}
+
+/* Compartir */
+async function shareApp(){
+  const url = location.origin + location.pathname;
+  try { if (navigator.share){ await navigator.share({ title: 'Pastipet', text: 'Pastipet: el pastillero de tu mascota. Ábrelo y agrégalo a tu pantalla de inicio.', url }); return; } }
+  catch(e){ if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(url); toast('Enlace copiado'); } catch(e){ showBanner('Comparte este enlace: ' + url); }
+}
+
+/* Número en el ícono (iPhone con la app instalada y avisos permitidos; también Chrome/Edge de escritorio) */
 let lastIconBadge = -1;
 function updateIconBadge(){
   if (!canIconBadge() || !S.ready || !S.logsReady) return;
@@ -972,32 +1121,32 @@ function updateIconBadge(){
   lastIconBadge = n;
   try { (n ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {}); } catch(e){}
 }
-function badgeStatus(){
-  if (!isInstalled()) return { s: 'web', txt: 'Abre Pastipet desde su ícono en la pantalla de inicio, no desde Safari. El globo solo funciona en la app instalada.' };
-  if (!canIconBadge()) return { s: 'old', txt: 'Este iPhone no permite globos en apps web. Necesita iOS 16.4 o superior (Ajustes, General, Actualización de software).' };
-  const p = Notification.permission;
-  if (p === 'granted') return { s: 'on', txt: 'Activado. Al salir de la app, el ícono muestra cuántas dosis faltan hoy.' };
-  if (p === 'denied') return { s: 'off', txt: 'Bloqueado. Actívalo en Ajustes del iPhone, en Notificaciones, Pastipet, y permite Globos.' };
-  return { s: 'ask', txt: 'Muestra en el ícono cuántas dosis le faltan hoy a tus mascotas, como los mensajes sin leer.' };
+
+/* Tarjeta en el perfil */
+function appSettings(){
+  const ins = isInstalled(), st = notifStatus(), where = PHONE ? `tu ${PHONE}` : 'tu equipo';
+  const inst = ins ? `<p class="ok">Instalada. Ábrela siempre desde su ícono.</p>`
+    : installEvt ? `<p class="muted">Ábrela como una app: a pantalla completa, desde su ícono y sin internet.</p><div><button class="btn small" data-install>Instalar Pastipet</button></div>`
+    : `<p class="muted">${esc(installHow())}</p>`;
+  const avisos = `<p class="${st.s === 'on' ? 'ok' : 'muted'}">${esc(st.txt)}</p>`
+    + (st.s === 'on' ? `<p class="muted lim">${esc(notifLimit())}</p><div><button class="btn ghost small" data-testnotif>Probar un aviso</button></div>`
+      : st.s === 'ask' ? `<div><button class="btn small" data-notif>Activar avisos</button></div>` : '');
+  return `<div class="card"><h2>Pastipet en ${where}</h2>
+    <div class="set"><b>App en la pantalla de inicio</b>${inst}</div>
+    <div class="set"><b>Avisos de dosis</b>${avisos}</div>
+    <div class="set"><b>Compartir Pastipet</b><p class="muted">Envía el enlace a otra persona. Cada teléfono guarda sus propias mascotas y datos.</p><div><button class="btn ghost small" data-share>Compartir enlace</button></div></div>
+  </div>`;
 }
-function badgeSettings(){
-  const st = badgeStatus();
-  return `<div class="card"><h2>Globo en el ícono</h2><p class="${st.s === 'on' ? 'ok' : 'muted'}">${st.txt}</p>
-    ${st.s === 'ask' ? '<div><button class="btn small" data-iconbadge>Activar globo en el ícono</button></div>' : ''}</div>`;
-}
+/* Sugerencia en Hoy: primero instalar, luego activar avisos */
 function badgeCard(){
-  if (!canIconBadge() || !isInstalled()) return '';
-  const p = Notification.permission;
-  if (p === 'granted') return '';
-  if (p === 'denied') return `<div class="note"><b>Globo en el ícono desactivado</b>Para ver en el ícono cuántas dosis faltan hoy, activa las notificaciones de Pastipet en Ajustes del iPhone, en Notificaciones.</div>`;
-  return `<div class="note"><b>Globo en el ícono</b>Muestra en el ícono de Pastipet cuántas dosis le faltan hoy a tus mascotas, como los mensajes sin leer.<div><button class="btn small" data-iconbadge style="margin-top:8px">Activar globo en el ícono</button></div></div>`;
-}
-async function enableIconBadge(){
-  try {
-    const r = await Notification.requestPermission();
-    if (r === 'granted'){ lastIconBadge = -1; updateIconBadge(); toast('Globo activado'); }
-    render();
-  } catch(e){ render(); }
+  if (!S.ready) return '';
+  if (!isInstalled() && (IS_IOS || IS_ANDROID || installEvt) && !tipHidden('install'))
+    return `<div class="note"><b>Instala Pastipet en ${PHONE ? 'tu ' + PHONE : 'tu equipo'}</b>${installEvt ? 'Ábrela como una app, a pantalla completa y sin internet.' : esc(installHow())}
+      <div class="row" style="margin-top:8px">${installEvt ? '<button class="btn small" data-install>Instalar</button>' : ''}<button class="btn text" data-hide="install">Ahora no</button></div></div>`;
+  if (canNotify() && notifPerm() === 'default' && !tipHidden('notif'))
+    return `<div class="note"><b>Activa los avisos</b>${esc(notifStatus().txt)}
+      <div class="row" style="margin-top:8px"><button class="btn small" data-notif>Activar avisos</button><button class="btn text" data-hide="notif">Ahora no</button></div></div>`;
+  return '';
 }
 function renderBadge(){
   updateIconBadge();
@@ -1010,10 +1159,12 @@ function renderBadge(){
 }
 function checkDue(){
   renderBadge();
+  runActions();
   const box = $('#duepop');
-  if (!$('#sheet').hidden) return; // no interrumpir el formulario
   const t = today(), sn = loadSnooze(), now = Date.now();
   const list = pendingToday().due.filter(e => !(sn[t + '|' + e.key] > now));
+  notifyDue(list); planAlerts();
+  if (!$('#sheet').hidden) return; // no interrumpir el formulario
   if (!list.length){ box.hidden = true; return; }
   const n = nowMins(), pets = [...new Set(list.map(e => petOf(e.m)))], many = petIds().length > 1;
   $('#duepop-title').textContent = pets.length === 1 ? `Le toca a ${petName(pets[0]) || 'tu mascota'}` : 'Dosis pendientes';
@@ -1041,7 +1192,8 @@ function giveFromPopup(key){
   if ($('#duepop').hidden) toast('Dosis marcada');
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && api){ lastIconBadge = -1; render(); checkDue(); }
+  if (document.visibilityState === 'visible' && api){ lastIconBadge = -1; closeNotifs(); render(); checkDue();
+    try { navigator.serviceWorker && navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}); } catch(e){} }
   else if (document.visibilityState === 'hidden'){ lastIconBadge = -1; updateIconBadge(); }
 });
 
@@ -1099,9 +1251,27 @@ function openForm(m){
   $('#f-err').hidden = true;
   updateFreqUI();
   $('#sheet').hidden = false;
+  try { history.pushState({ ...(history.state || {}), sheet: 1 }, ''); } catch(e){}
   setTimeout(() => $('#f-name').focus(), 30);
 }
-function closeForm(){ $('#sheet').hidden = true; editing = null; }
+function hideForm(){ $('#sheet').hidden = true; editing = null; }
+function closeForm(){ if (history.state && history.state.sheet) history.back(); else hideForm(); }
+/* Botón atrás de Android: cierra el formulario o vuelve a Hoy en vez de salir de la app */
+function setTab(k){
+  if (k === S.tab) return;
+  const st = history.state || {};
+  try {
+    if (k === 'today'){ if (st.tab){ history.back(); return; } }
+    else if (st.tab) history.replaceState({ tab: k }, ''); else history.pushState({ tab: k }, '');
+  } catch(e){}
+  S.tab = k; if (k === 'meds') S.confirmDel = null;
+  render(); scrollTo(0, 0);
+}
+addEventListener('popstate', e => {
+  if (!$('#sheet').hidden) hideForm();
+  S.tab = (e.state && e.state.tab) || 'today';
+  render();
+});
 
 $('#f-addtime').onclick = () => { addTimeRow('12:00'); updatePreview(); };
 $('#f-freq').onchange = updateFreqUI;
@@ -1138,10 +1308,10 @@ $('#form').addEventListener('submit', e => {
 });
 
 /* ---------- Eventos ---------- */
-$('#tab-today').onclick = () => { S.tab = 'today'; render(); };
-$('#tab-meds').onclick = () => { S.tab = 'meds'; S.confirmDel = null; render(); };
-$('#tab-pet').onclick = () => { S.tab = 'pet'; render(); scrollTo(0, 0); };
-$('#hphoto').onclick = () => { if (S.tab === 'pet') $('#photo-input').click(); else { S.tab = 'pet'; render(); scrollTo(0, 0); } };
+$('#tab-today').onclick = () => setTab('today');
+$('#tab-meds').onclick = () => setTab('meds');
+$('#tab-pet').onclick = () => setTab('pet');
+$('#hphoto').onclick = () => { if (S.tab === 'pet') $('#photo-input').click(); else setTab('pet'); };
 $('#restore-input').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) readBackup(f); });
 $('#photo-input').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; e.target.value = '';
@@ -1200,7 +1370,11 @@ document.addEventListener('click', e => {
     S.confirmPetDel = false; S.editProfile = false; S.tab = 'today';
     selectPet(petIds()[0] || 'main'); toast(`${name || 'Mascota'} eliminada`);
   }
-  else if (b.hasAttribute('data-iconbadge')) enableIconBadge();
+  else if (b.hasAttribute('data-notif') || b.hasAttribute('data-iconbadge')) enableNotifs();
+  else if (b.hasAttribute('data-install')) doInstall();
+  else if (b.hasAttribute('data-testnotif')) testNotif();
+  else if (b.hasAttribute('data-share')) shareApp();
+  else if (b.dataset.hide) hideTip(b.dataset.hide);
   else if (b.hasAttribute('data-backup')) downloadBackup();
   else if (b.hasAttribute('data-restore')) $('#restore-input').click();
   else if (b.hasAttribute('data-import-no')){ S.pendingImport = null; render(); }
