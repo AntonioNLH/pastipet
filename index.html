@@ -474,7 +474,8 @@ function petName(id){ return id === 'main' ? (S.rootPet || (S.profiles.main && S
 function petIds(){
   const ids = Object.keys(S.profiles).filter(k => k !== 'main' && !S.profiles[k]._draft)
     .sort((a, b) => (S.profiles[a].createdAt || 0) - (S.profiles[b].createdAt || 0));
-  const hasMain = S.profiles.main || S.rootPet || S.allMeds.some(m => petOf(m) === 'main') || S.allWeights.some(w => (w.petId || 'main') === 'main') || !ids.length;
+  const pm = S.profiles.main;
+  const hasMain = (pm && (pm.name || pm.photo || pm.breed || pm.birth || pm.vet || pm.notes)) || S.rootPet || S.allMeds.some(m => petOf(m) === 'main') || S.allWeights.some(w => (w.petId || 'main') === 'main') || !ids.length;
   const draft = Object.keys(S.profiles).filter(k => S.profiles[k]._draft);
   return [...(hasMain ? ['main'] : []), ...ids, ...draft];
 }
@@ -566,7 +567,7 @@ function localApi(){
   try { const raw = localStorage.getItem(KEY); if (raw) data = { ...data, ...JSON.parse(raw) }; } catch(e){}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ meds: S.allMeds, pet: S.rootPet, logs: S.logs, profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)), weights: S.allWeights })); } catch(e){} return Promise.resolve(); };
   return {
-    label: 'Guardado en este teléfono. Versión 4.',
+    label: 'Guardado en este teléfono. Versión 4.1.',
     start(){ S.allMeds = data.meds || []; S.rootPet = data.pet || ''; S.logs = data.logs || {}; S.profiles = data.profiles || (data.profile ? { main: data.profile } : {}); S.allWeights = (data.weights || []).map(w => ({ id: w.id || w.date, ...w })); S.ready = true; S.logsReady = true; render(); },
     saveMed: save, delMed: save, setPet: save, setDoses: save, saveProfile: save, delProfile: save, setWeight: save, delWeight: save,
     canImport: true,

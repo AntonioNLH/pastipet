@@ -1,5 +1,5 @@
 // Pastipet: funciona sin conexión. Sube el número de versión cada vez que actualices index.html.
-const VERSION = 'pastipet-v4';
+const VERSION = 'pastipet-v4b';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './badge-96.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
