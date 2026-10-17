@@ -1,5 +1,5 @@
 // Pastipet: funciona sin conexión. Sube el número de versión cada vez que actualices index.html.
-const VERSION = 'pastipet-v5.3';
+const VERSION = 'pastipet-v5.4';
 const CFG_CACHE = 'pastipet-cfg'; // datos del servidor de avisos y acciones pendientes (no se borra al actualizar)
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './badge-96.png', './apple-touch-icon.png'];
 

@@ -631,7 +631,7 @@ function localApi(){
   try { const raw = localStorage.getItem(KEY); if (raw) data = { ...data, ...JSON.parse(raw) }; } catch(e){}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ meds: S.allMeds, pet: S.rootPet, logs: S.logs, profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)), weights: S.allWeights })); } catch(e){} return Promise.resolve(); };
   return {
-    label: 'Guardado en este teléfono. Versión 5.3.',
+    label: 'Guardado en este teléfono. Versión 5.4.',
     start(){ S.allMeds = data.meds || []; S.rootPet = data.pet || ''; S.logs = data.logs || {}; S.profiles = data.profiles || (data.profile ? { main: data.profile } : {}); S.allWeights = (data.weights || []).map(w => ({ id: w.id || w.date, ...w })); S.ready = true; S.logsReady = true; render(); },
     saveMed: save, delMed: save, setPet: save, setDoses: save, saveProfile: save, delProfile: save, setWeight: save, delWeight: save,
     canImport: true,
@@ -1176,7 +1176,7 @@ function notifLimit(){
 async function enableNotifs(){
   try {
     const r = await Notification.requestPermission();
-    if (r === 'granted'){ lastIconBadge = -1; updateIconBadge(); toast('Avisos activados'); vib(); ensurePush(); }
+    if (r === 'granted'){ lastIconBadge = -1; updateIconBadge(); toast('Avisos activados'); vib(); ensurePush(true); }
   } catch(e){}
   render();
 }
@@ -1277,8 +1277,9 @@ function deviceId(){
 }
 const ub64 = s => { s = s.trim().replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
 let pushSub = null;
-async function ensurePush(){
+async function ensurePush(fromTap){
   if (!pushCapable() || notifPerm() !== 'granted' || !deviceId()) return null;
+  S.pushTried = true;
   try {
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
@@ -1289,10 +1290,17 @@ async function ensurePush(){
     }
     pushSub = sub;
     try { const c = await caches.open(CFG_CACHE); await c.put('cfg', new Response(JSON.stringify({ id: deviceId(), url: PUSH_URL }))); } catch(e){}
+    S.pushErr = '';
     if (!S.pushOn){ S.pushOn = true; render(); }
+    if (fromTap){ try { localStorage.removeItem(SIG_KEY); } catch(e){} toast('Avisos conectados'); }
     schedulePushSync();
     return sub;
-  } catch(e){ return null; }
+  } catch(e){
+    S.pushErr = String((e && (e.message || e.name)) || e || 'error').slice(0, 140);
+    if (fromTap){ toast('No se pudieron conectar los avisos'); }
+    render();
+    return null;
+  }
 }
 /* Avisos de los próximos 7 días: 5 min antes de la dosis y 5 min después si no está marcada */
 function pushEvents(){
@@ -1360,6 +1368,7 @@ function appSettings(){
     : installEvt ? `<p class="muted">Ábrela como una app: a pantalla completa, desde su ícono y sin internet.</p><div><button class="btn small" data-install>Instalar Pastipet</button></div>`
     : `<p class="muted">${esc(installHow())}</p>`;
   const avisos = `<p class="${st.s === 'on' ? 'ok' : 'muted'}">${esc(st.txt)}</p>`
+    + (st.s === 'on' && !S.pushOn && pushCapable() && S.pushTried ? `<p class="err">Los avisos con la app cerrada están desconectados en este teléfono.</p><div><button class="btn small" data-pushfix>Conectar avisos</button></div>${S.pushErr ? `<p class="muted lim">Detalle: ${esc(S.pushErr)}</p>` : ''}` : '')
     + (st.s === 'on' ? `${S.pushOn ? '' : `<p class="muted lim">${esc(notifLimit())}</p>`}<div class="row"><button class="btn ghost small" data-testnotif>Probar un aviso</button>${S.pushOn ? '<button class="btn ghost small" data-testpush>Probar con la app cerrada</button>' : ''}</div>`
       : st.s === 'ask' ? `<div><button class="btn small" data-notif>Activar avisos</button></div>` : '');
   return `<div class="card"><h2>Pastipet en ${where}</h2>
@@ -1374,6 +1383,9 @@ function badgeCard(){
   if (!isInstalled() && (IS_IOS || IS_ANDROID || installEvt) && !tipHidden('install'))
     return `<div class="note"><b>Instala Pastipet en ${PHONE ? 'tu ' + PHONE : 'tu equipo'}</b>${installEvt ? 'Ábrela como una app, a pantalla completa y sin internet.' : esc(installHow())}
       <div class="row" style="margin-top:8px">${installEvt ? '<button class="btn small" data-install>Instalar</button>' : ''}<button class="btn text" data-hide="install">Ahora no</button></div></div>`;
+  if (notifPerm() === 'granted' && pushCapable() && S.pushTried && !S.pushOn)
+    return `<div class="note"><b>Conecta los avisos</b>Para que te lleguen aunque Pastipet esté cerrada, toca el botón una vez.
+      <div class="row" style="margin-top:8px"><button class="btn small" data-pushfix>Conectar avisos</button></div></div>`;
   if (canNotify() && notifPerm() === 'default' && !tipHidden('notif'))
     return `<div class="note"><b>Activa los avisos</b>${esc(notifStatus().txt)}
       <div class="row" style="margin-top:8px"><button class="btn small" data-notif>Activar avisos</button><button class="btn text" data-hide="notif">Ahora no</button></div></div>`;
@@ -1649,6 +1661,7 @@ document.addEventListener('click', e => {
   else if (b.hasAttribute('data-install')) doInstall();
   else if (b.hasAttribute('data-testnotif')) testNotif();
   else if (b.hasAttribute('data-testpush')) testPush();
+  else if (b.hasAttribute('data-pushfix')) ensurePush(true);
   else if (b.hasAttribute('data-share')) shareApp();
   else if (b.dataset.hide) hideTip(b.dataset.hide);
   else if (b.hasAttribute('data-backup')) downloadBackup();
