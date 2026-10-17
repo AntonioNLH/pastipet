@@ -1,5 +1,5 @@
 // Pastipet: funciona sin conexión. Sube el número de versión cada vez que actualices index.html.
-const VERSION = 'pastipet-v5';
+const VERSION = 'pastipet-v5.3';
 const CFG_CACHE = 'pastipet-cfg'; // datos del servidor de avisos y acciones pendientes (no se borra al actualizar)
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './badge-96.png', './apple-touch-icon.png'];
 
@@ -29,15 +29,24 @@ self.addEventListener('fetch', e => {
 });
 // Aviso que llega desde el servidor (funciona con la app cerrada)
 self.addEventListener('push', e => {
-  let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: 'Pastipet', body: e.data ? e.data.text() : '' }; }
-  const dose = !!d.key, android = /Android/i.test(self.navigator.userAgent || '');
-  e.waitUntil(self.registration.showNotification(d.title || 'Pastipet', {
-    body: d.body || '', tag: dose ? 'dose-' + d.key : 'pastipet', renotify: true, lang: 'es-CL',
-    icon: 'icon-192.png', badge: 'badge-96.png', vibrate: [200, 100, 200], requireInteraction: dose && android,
-    data: { key: d.key || '', date: d.date || '' },
-    actions: dose ? [{ action: 'give', title: 'Marcar como dada' }, { action: 'later', title: 'En 15 min' }] : []
-  }));
+  e.waitUntil((async () => {
+    let d = {}, step = 'leer';
+    try { d = e.data ? e.data.json() : {}; } catch (err) { try { d = { title: 'Pastipet', body: e.data ? e.data.text() : '' }; } catch (er2) {} }
+    const dose = !!d.key, android = /Android/i.test((self.navigator && self.navigator.userAgent) || '');
+    const title = d.title || 'Pastipet', base = { body: d.body || '', tag: dose ? 'dose-' + d.key : 'pastipet', icon: 'icon-192.png', data: { key: d.key || '', date: d.date || '' } };
+    let ok = false, err = '';
+    try {
+      step = 'mostrar';
+      await self.registration.showNotification(title, android
+        ? { ...base, badge: 'badge-96.png', renotify: true, vibrate: [200, 100, 200], requireInteraction: dose, actions: dose ? [{ action: 'give', title: 'Marcar como dada' }, { action: 'later', title: 'En 15 min' }] : [] }
+        : base);
+      ok = true;
+    } catch (err1) {
+      err = String(err1 && err1.message || err1).slice(0, 120);
+      try { await self.registration.showNotification(title, { body: d.body || '' }); ok = true; } catch (err2) {}
+    }
+    try { await tellServer('/ack', { ok, err, step, kind: d.kind || '', ua: ((self.navigator && self.navigator.userAgent) || '').slice(0, 90) }); } catch (er3) {}
+  })());
 });
 
 async function cfg() {

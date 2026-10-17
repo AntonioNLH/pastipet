@@ -275,6 +275,20 @@ button,.tabbar,.lid{-webkit-user-select:none;user-select:none;-webkit-touch-call
 .set > b{font-size:1rem}
 .set p{margin:0}
 .set .lim{font-size:.86rem}
+/* Celebración al terminar un tratamiento */
+.party{position:fixed;inset:0;z-index:20;background:rgba(43,36,32,.5);display:flex;align-items:center;justify-content:center;
+  padding:max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px))}
+.party canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:21}
+.partycard{position:relative;z-index:22;background:var(--surface);border-radius:28px;box-shadow:0 22px 60px rgba(43,36,32,.3);width:100%;max-width:400px;padding:28px 22px 22px;
+  display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;animation:partyin .5s cubic-bezier(.2,1.4,.4,1)}
+.partycard .medal{width:96px;height:96px;border-radius:50%;background:var(--sun-soft);display:grid;place-items:center;font-size:3.2rem;line-height:1;box-shadow:0 0 0 8px var(--sun-soft), 0 0 0 10px var(--sun);animation:medal 1.2s ease-in-out .3s 2}
+.partycard h2{font-family:var(--display);font-size:1.9rem;line-height:1.1;margin:6px 0 0;color:var(--teal)}
+.partycard .sub{font-size:1.05rem;font-weight:700;margin:0}
+.partycard p{margin:0;color:var(--muted)}
+.partycard .btn{margin-top:8px;min-width:60%}
+@keyframes partyin{from{transform:scale(.6) translateY(20px);opacity:0}to{transform:none;opacity:1}}
+@keyframes medal{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg) scale(1.08)}75%{transform:rotate(12deg) scale(1.08)}}
+@media (prefers-reduced-motion: reduce){.partycard,.partycard .medal{animation:none}}
 </style>
 </head>
 <body>
@@ -307,6 +321,16 @@ button,.tabbar,.lid{-webkit-user-select:none;user-select:none;-webkit-touch-call
 <input type="file" id="photo-input" accept="image/*" hidden>
 <input type="file" id="restore-input" accept="application/json,.json" hidden>
 <div class="toast" id="toast" role="status" hidden></div>
+<div class="party" id="party" hidden>
+  <canvas id="confetti"></canvas>
+  <section class="partycard" role="alertdialog" aria-modal="true" aria-labelledby="party-title" aria-describedby="party-sub party-txt">
+    <div class="medal" aria-hidden="true">🏆</div>
+    <h2 id="party-title">¡Felicidades!</h2>
+    <p class="sub" id="party-sub">Tratamiento terminado</p>
+    <p id="party-txt"></p>
+    <button class="btn" id="party-ok">¡Bien hecho!</button>
+  </section>
+</div>
 <div class="duepop" id="duepop" hidden>
   <section class="duecard" role="alertdialog" aria-modal="true" aria-labelledby="duepop-title">
     <div class="duehead"><span class="bell" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></span><h2 id="duepop-title">Le toca a tu mascota</h2></div>
@@ -321,11 +345,26 @@ button,.tabbar,.lid{-webkit-user-select:none;user-select:none;-webkit-touch-call
     <div class="field"><label for="f-name">Nombre</label><input type="text" id="f-name" placeholder="Ej: Prednisolona" autocomplete="off"></div>
     <div class="field"><label for="f-dose">Dosis</label><input type="text" id="f-dose" placeholder="Ej: ½ comprimido, 2 ml, 1 gota" autocomplete="off"></div>
     <div class="field">
+      <label>¿Cómo se lo das?</label>
+      <div class="seg" id="f-mode">
+        <button type="button" data-mode="fixed" aria-pressed="true">A horas fijas</button>
+        <button type="button" data-mode="hours" aria-pressed="false">Cada cierta cantidad de horas</button>
+      </div>
+    </div>
+    <div class="field" id="f-hours-wrap" hidden>
+      <div class="two">
+        <div class="field"><label for="f-hours">Cada cuántas horas</label>
+          <select id="f-hours"><option value="4">Cada 4 horas</option><option value="6">Cada 6 horas</option><option value="8" selected>Cada 8 horas</option><option value="12">Cada 12 horas</option><option value="24">Cada 24 horas</option></select></div>
+        <div class="field"><label for="f-first">Primera dosis</label><input type="time" id="f-first" value="08:00"></div>
+      </div>
+      <span class="hint" id="f-hours-hint"></span>
+    </div>
+    <div class="field" id="f-fixed-wrap">
       <label>Horarios</label>
       <div class="times" id="f-times"></div>
       <div><button type="button" class="btn ghost small" id="f-addtime">+ Agregar horario</button></div>
     </div>
-    <div class="field">
+    <div class="field" id="f-freq-wrap">
       <label for="f-freq">¿Qué días?</label>
       <select id="f-freq">
         <option value="daily">Todos los días</option>
@@ -340,10 +379,18 @@ button,.tabbar,.lid{-webkit-user-select:none;user-select:none;-webkit-touch-call
       <label>¿Le toca hoy?</label>
       <div class="row"><button type="button" class="btn ghost small" id="f-today-yes">Sí, hoy le toca</button><button type="button" class="btn ghost small" id="f-today-no">No, hoy no</button></div>
     </div>
-    <div class="two">
-      <div class="field"><label for="f-start">Desde</label><input type="date" id="f-start"></div>
-      <div class="field"><label for="f-end">Hasta (opcional)</label><input type="date" id="f-end"></div>
+    <div class="field"><label for="f-start">Empieza</label><input type="date" id="f-start"></div>
+    <div class="field">
+      <label for="f-durmode">¿Por cuánto tiempo?</label>
+      <select id="f-durmode">
+        <option value="none">Sin fecha de término</option>
+        <option value="days">Por una cantidad de días</option>
+        <option value="date">Hasta una fecha</option>
+      </select>
     </div>
+    <div class="field" id="f-dur-wrap" hidden><label for="f-dur">Cuántos días</label><input type="number" id="f-dur" min="1" max="365" value="7" inputmode="numeric"></div>
+    <div class="field" id="f-end-wrap" hidden><label for="f-end">Último día</label><input type="date" id="f-end"></div>
+    <span class="hint" id="f-dur-hint"></span>
     <div class="field"><span class="hint">Próximos 7 días</span><div class="preview" id="f-preview"></div></div>
     <div class="field"><label for="f-notes">Notas (opcional)</label><textarea id="f-notes" placeholder="Ej: dar con comida"></textarea></div>
     <div class="err" id="f-err" hidden></div>
@@ -388,7 +435,24 @@ function relDay(d){
   const x = parse(d), yr = x.getFullYear() !== new Date().getFullYear() ? ` ${x.getFullYear()}` : '';
   return `${DOWL[x.getDay()]} ${x.getDate()} ${MON[x.getMonth()]}${yr}`;
 }
+/* "Cada X horas": horarios del día a partir de la primera dosis */
+function hourlyTimes(first, h){
+  const [a, b] = first.split(':').map(Number), out = [];
+  for (let k = 0; k < Math.max(1, Math.round(24 / h)); k++){ const mm = (a * 60 + b + k * h * 60) % 1440; out.push(pad(Math.floor(mm / 60)) + ':' + pad(mm % 60)); }
+  return [...new Set(out)].sort();
+}
+/* El primer día parte en la primera dosis; si dura N días, el último día termina antes de esa hora (así son N × 24 horas exactas) */
+function timesFor(m, date){
+  let ts = m.times || [];
+  if (m.hours && m.first){
+    if (date === m.start) ts = ts.filter(x => x >= m.first);
+    if (m.durDays && m.end && date === m.end && m.end !== m.start && (m.times || []).some(x => x < m.first)) ts = ts.filter(x => x < m.first);
+  }
+  return ts;
+}
+function durText(m){ return m.durDays ? `por ${m.durDays} día${m.durDays == 1 ? '' : 's'}` : ''; }
 function freqText(m){
+  if (m.hours) return `Cada ${m.hours} horas`;
   if (m.freq === 'interval') return m.every == 2 ? 'Día por medio' : `Cada ${m.every} días`;
   if (m.freq === 'weekdays'){
     const ds = CHIP.filter(([v]) => (m.days||[]).includes(v)).map(([v]) => DOW[v]);
@@ -567,7 +631,7 @@ function localApi(){
   try { const raw = localStorage.getItem(KEY); if (raw) data = { ...data, ...JSON.parse(raw) }; } catch(e){}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ meds: S.allMeds, pet: S.rootPet, logs: S.logs, profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)), weights: S.allWeights })); } catch(e){} return Promise.resolve(); };
   return {
-    label: 'Guardado en este teléfono. Versión 5.',
+    label: 'Guardado en este teléfono. Versión 5.3.',
     start(){ S.allMeds = data.meds || []; S.rootPet = data.pet || ''; S.logs = data.logs || {}; S.profiles = data.profiles || (data.profile ? { main: data.profile } : {}); S.allWeights = (data.weights || []).map(w => ({ id: w.id || w.date, ...w })); S.ready = true; S.logsReady = true; render(); },
     saveMed: save, delMed: save, setPet: save, setDoses: save, saveProfile: save, delProfile: save, setWeight: save, delWeight: save,
     canImport: true,
@@ -594,17 +658,99 @@ const fail = () => showBanner('No se pudo guardar el último cambio. Revisa tu c
 /* ---------- Acciones ---------- */
 function toggleDose(date, key){
   const cur = { ...(S.logs[date] || {}) };
-  if (cur[key]) delete cur[key]; else { cur[key] = Date.now(); vib(); if (date === today()) closeNotifs(key); }
+  let finished = null;
+  if (cur[key]) delete cur[key];
+  else {
+    cur[key] = Date.now(); vib(); if (date === today()) closeNotifs(key);
+    const m = S.allMeds.find(x => key.startsWith(x.id + '_')), ld = m && lastDose(m);
+    if (m && ld && ld.d === date && doseKey(m.id, ld.t) === key) finished = m;
+  }
   S.logs = { ...S.logs, [date]: cur };
   render();
   api.setDoses(date, cur).catch(fail);
+  if (finished) celebrate(finished);
+}
+/* ---------- Celebración: pop-up, confeti, tambores, platillos y fanfarria ---------- */
+function celebrate(m){
+  const pet = petName(petOf(m)) || 'Tu mascota', total = countDoses(m);
+  let given = 0; for (let d = m.start, i = 0; d <= m.end && i < 400; d = addDays(d, 1), i++) for (const e of dayEntriesFor([m], d)) if ((S.logs[d] || {})[e.key]) given++;
+  const resumen = !total ? `${pet} terminó ${m.name}.` : given >= total ? `${pet} completó ${m.name}: las ${total} dosis.` : `${pet} terminó ${m.name}. Quedaron marcadas ${given} de ${total} dosis.`;
+  $('#party-txt').textContent = `${resumen} ¡Buen trabajo cuidándol${petGender(m)}!`;
+  $('#duepop').hidden = true; $('#party').hidden = false;
+  setTimeout(() => $('#party-ok').focus({ preventScroll: true }), 60);
+  try { navigator.vibrate && navigator.vibrate([90, 60, 90, 60, 90, 120, 400]); } catch(e){}
+  fanfare(); confetti();
+}
+function petGender(m){ const p = S.profiles[petOf(m)] || {}; return p.sex === 'macho' ? 'o' : p.sex === 'hembra' ? 'a' : 'a'; }
+function closeParty(){ $('#party').hidden = true; confettiStop = true; checkDue(); }
+$('#party-ok').onclick = closeParty;
+$('#party').addEventListener('click', e => { if (e.target.id === 'party') closeParty(); });
+let confettiStop = false;
+function confetti(){
+  const cv = $('#confetti'), cx = cv.getContext('2d'), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = cv.width = innerWidth * dpr, H = cv.height = innerHeight * dpr;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cols = ['#0E7462', '#F2A23A', '#7646A3', '#E85D75', '#3FB0E0', '#FCD34D'];
+  const N = reduce ? 40 : 180, P = [];
+  for (let i = 0; i < N; i++){
+    const left = i % 2 === 0;
+    P.push({ x: left ? -10 * dpr : W + 10 * dpr, y: H * (0.55 + Math.random() * 0.35), vx: (left ? 1 : -1) * (6 + Math.random() * 9) * dpr, vy: -(12 + Math.random() * 12) * dpr,
+      w: (6 + Math.random() * 6) * dpr, h: (9 + Math.random() * 8) * dpr, r: Math.random() * 6, vr: (Math.random() - .5) * .35, c: cols[i % cols.length], round: Math.random() < .3 });
+  }
+  confettiStop = false; const t0 = performance.now();
+  (function frame(t){
+    cx.clearRect(0, 0, W, H); let alive = 0;
+    for (const p of P){
+      p.vy += .42 * dpr; p.vx *= .985; p.vy = Math.min(p.vy, 7 * dpr); p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      if (p.y < H + 20 * dpr) alive++;
+      cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c;
+      if (p.round){ cx.beginPath(); cx.arc(0, 0, p.w / 2, 0, 7); cx.fill(); } else cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.r * 2)) + 2);
+      cx.restore();
+    }
+    if (!confettiStop && alive && t - t0 < 7000) requestAnimationFrame(frame); else cx.clearRect(0, 0, W, H);
+  })(t0);
+}
+function fanfare(){
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    const ac = fanfare.ac || (fanfare.ac = new AC()); if (ac.state === 'suspended') ac.resume();
+    const out = ac.createGain(); out.gain.value = .55; out.connect(ac.destination);
+    const T = ac.currentTime + .05;
+    const drum = at => { // bombo
+      const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine';
+      o.frequency.setValueAtTime(140, at); o.frequency.exponentialRampToValueAtTime(42, at + .25);
+      g.gain.setValueAtTime(1, at); g.gain.exponentialRampToValueAtTime(.001, at + .35); o.connect(g).connect(out); o.start(at); o.stop(at + .4);
+    };
+    const noise = (at, dur, freq, vol) => { // tambor redoblante / platillo
+      const b = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate), d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+      s.buffer = b; f.type = 'highpass'; f.frequency.value = freq;
+      g.gain.setValueAtTime(vol, at); g.gain.exponentialRampToValueAtTime(.001, at + dur); s.connect(f).connect(g).connect(out); s.start(at);
+    };
+    const note = (at, f, dur, vol) => { // trompeta
+      for (const [type, det, v] of [['sawtooth', 0, .18], ['square', 7, .07]]){
+        const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter();
+        o.type = type; o.frequency.value = f; o.detune.value = det; lp.type = 'lowpass'; lp.frequency.value = 2600;
+        g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(v * vol, at + .03); g.gain.setValueAtTime(v * vol, at + dur - .06); g.gain.linearRampToValueAtTime(0, at + dur);
+        o.connect(lp).connect(g).connect(out); o.start(at); o.stop(at + dur + .02);
+      }
+    };
+    for (let i = 0; i < 8; i++) noise(T + i * .07, .08, 1500, .35 + i * .05);   // redoble
+    drum(T + .6); noise(T + .6, 1.4, 5000, .5);                               // ¡bombo y platillo!
+    const C5 = 523.25, E5 = 659.25, G5 = 783.99, C6 = 1046.5;
+    [[0, G5, .14], [.16, G5, .14], [.32, G5, .14], [.48, C6, .7]].forEach(([d, f, l]) => note(T + .75 + d, f, l, 1));
+    [[0, C5], [0, E5], [0, G5]].forEach(([d, f]) => note(T + 1.25 + d, f, .9, .55));
+    drum(T + 1.23); noise(T + 1.23, 1.8, 5000, .55);                          // platillo final
+    drum(T + 1.55);
+  } catch(e){}
 }
 
 /* ---------- Vista: Dosis ---------- */
 function dayEntries(date){ return dayEntriesFor(S.meds, date); }
 function dayEntriesFor(list, date){
   const out = [];
-  for (const m of list) if (isDue(m, date)) for (const t of (m.times || [])) out.push({ m, t, key: doseKey(m.id, t) });
+  for (const m of list) if (isDue(m, date)) for (const t of timesFor(m, date)) out.push({ m, t, key: doseKey(m.id, t) });
   return out.sort((a,b) => a.t.localeCompare(b.t) || a.m.name.localeCompare(b.m.name));
 }
 const DL = ['D','L','M','X','J','V','S'];
@@ -676,6 +822,7 @@ function renderToday(){
 function schedText(m){
   const t = today();
   let s = `${freqText(m)} a las ${timesText(m.times || [])}`;
+  if (m.durDays) s += `, ${durText(m)}`;
   if (m.start > t) s += `, desde ${relDay(m.start)}`;
   if (m.end) s += m.end < t ? `, terminó ${relDay(m.end)}` : `, hasta ${relDay(m.end)}`;
   return s;
@@ -1291,27 +1438,59 @@ function addTimeRow(val){
   w.querySelector('input').oninput = updatePreview;
   $('#f-times').appendChild(w);
 }
+let fMode = 'fixed';
 function formMed(){
-  const fv = $('#f-freq').value;
+  const hourly = fMode === 'hours';
+  const fv = hourly ? 'daily' : $('#f-freq').value;
+  const hours = hourly ? +$('#f-hours').value : 0, first = hourly ? ($('#f-first').value || '08:00') : '';
+  const start = $('#f-start').value || today(), dm = $('#f-durmode').value;
+  const durDays = dm === 'days' ? Math.max(1, Math.min(365, parseInt($('#f-dur').value, 10) || 0)) : 0;
+  let end = dm === 'date' ? ($('#f-end').value || '') : '';
+  if (durDays) end = addDays(start, hourly && hourlyTimes(first, hours).some(x => x < first) ? durDays : durDays - 1);
   return {
     name: $('#f-name').value.trim(), dose: $('#f-dose').value.trim(),
-    times: [...new Set([...$('#f-times').querySelectorAll('input')].map(i => i.value).filter(Boolean))].sort(),
+    times: hourly ? hourlyTimes(first, hours) : [...new Set([...$('#f-times').querySelectorAll('input')].map(i => i.value).filter(Boolean))].sort(),
     freq: fv === 'alt' ? 'interval' : fv,
     every: fv === 'alt' ? 2 : fv === 'interval' ? Math.max(2, Math.min(30, parseInt($('#f-every').value, 10) || 2)) : 1,
     days: fv === 'weekdays' ? [...fDays] : [],
-    start: $('#f-start').value || today(), end: $('#f-end').value || '',
+    hours, first, durDays,
+    start, end,
     notes: $('#f-notes').value.trim()
   };
+}
+function setMode(mode){
+  fMode = mode;
+  $('#f-mode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+  $('#f-hours-wrap').hidden = mode !== 'hours'; $('#f-fixed-wrap').hidden = mode === 'hours'; $('#f-freq-wrap').hidden = mode === 'hours';
+  updateFreqUI();
+}
+function updateDurUI(){
+  const dm = $('#f-durmode').value;
+  $('#f-dur-wrap').hidden = dm !== 'days'; $('#f-end-wrap').hidden = dm !== 'date';
+  updatePreview();
+}
+function lastDose(m){
+  if (!m.end) return null;
+  for (let i = 0; i < 400; i++){ const d = addDays(m.end, -i); if (d < m.start) break; if (isDue(m, d)){ const ts = timesFor(m, d); if (ts.length) return { d, t: ts[ts.length - 1] }; } }
+  return null;
+}
+function countDoses(m){
+  if (!m.end) return 0; let n = 0;
+  for (let d = m.start, i = 0; d <= m.end && i < 400; d = addDays(d, 1), i++) if (isDue(m, d)) n += timesFor(m, d).length;
+  return n;
 }
 function updateFreqUI(){
   const fv = $('#f-freq').value;
   $('#f-every-wrap').hidden = fv !== 'interval';
   $('#f-days-wrap').hidden = fv !== 'weekdays';
-  $('#f-parity').hidden = !(fv === 'alt' || fv === 'interval');
+  $('#f-parity').hidden = fMode === 'hours' || !(fv === 'alt' || fv === 'interval');
   updatePreview();
 }
 function updatePreview(){
   const m = formMed(), t = today();
+  if (fMode === 'hours') $('#f-hours-hint').textContent = `Le toca a las ${timesText(m.times)}, todos los días.`;
+  const ld = lastDose(m), nd = countDoses(m);
+  $('#f-dur-hint').textContent = ld ? `Última dosis: ${relDay(ld.d)} a las ${ld.t}${nd ? ` (${nd} dosis en total)` : ''}.` : '';
   let h = '';
   for (let i = 0; i < 7; i++){
     const d = addDays(t, i), x = parse(d), y = isDue(m, d);
@@ -1331,6 +1510,12 @@ function openForm(m){
   $('#f-every').value = m?.freq === 'interval' && m.every != 2 ? m.every : 3;
   fDays = m?.days ? [...m.days] : [1,3,5]; renderChips();
   $('#f-start').value = m?.start || today(); $('#f-end').value = m?.end || '';
+  $('#f-hours').value = String(m?.hours || 8); $('#f-first').value = m?.first || (m?.times && m.times[0]) || '08:00';
+  $('#f-durmode').value = m?.durDays ? 'days' : m?.end ? 'date' : 'none'; $('#f-dur').value = m?.durDays || 7;
+  fMode = m?.hours ? 'hours' : 'fixed';
+  $('#f-mode').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === fMode)));
+  $('#f-hours-wrap').hidden = fMode !== 'hours'; $('#f-fixed-wrap').hidden = fMode === 'hours'; $('#f-freq-wrap').hidden = fMode === 'hours';
+  $('#f-dur-wrap').hidden = $('#f-durmode').value !== 'days'; $('#f-end-wrap').hidden = $('#f-durmode').value !== 'date';
   $('#f-notes').value = m?.notes || '';
   $('#f-err').hidden = true;
   updateFreqUI();
@@ -1359,6 +1544,10 @@ addEventListener('popstate', e => {
 
 $('#f-addtime').onclick = () => { addTimeRow('12:00'); updatePreview(); };
 $('#f-freq').onchange = updateFreqUI;
+$('#f-mode').onclick = e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); };
+['#f-hours','#f-first','#f-dur'].forEach(s => $(s).addEventListener('input', updatePreview));
+$('#f-hours').addEventListener('change', updatePreview);
+$('#f-durmode').onchange = updateDurUI;
 ['#f-every','#f-start','#f-end'].forEach(s => $(s).addEventListener('input', updatePreview));
 $('#f-days').onclick = e => { const b = e.target.closest('[data-chip]'); if (!b) return; const v = +b.dataset.chip;
   fDays = fDays.includes(v) ? fDays.filter(x => x !== v) : [...fDays, v]; renderChips(); updatePreview(); };
@@ -1373,12 +1562,14 @@ $('#form').addEventListener('submit', e => {
   if (!m.name){ err.textContent = 'Escribe el nombre del medicamento.'; err.hidden = false; return; }
   if (!m.times.length){ err.textContent = 'Agrega al menos un horario.'; err.hidden = false; return; }
   if (m.freq === 'weekdays' && !m.days.length){ err.textContent = 'Elige al menos un día de la semana.'; err.hidden = false; return; }
-  if (m.end && m.end < m.start){ err.textContent = 'La fecha “hasta” debe ser posterior a “desde”.'; err.hidden = false; return; }
+  if ($('#f-durmode').value === 'date' && !m.end){ err.textContent = 'Elige el último día del tratamiento.'; err.hidden = false; return; }
+  if ($('#f-durmode').value === 'days' && !(parseInt($('#f-dur').value, 10) > 0)){ err.textContent = 'Escribe por cuántos días es el tratamiento.'; err.hidden = false; return; }
+  if (m.end && m.end < m.start){ err.textContent = 'El último día debe ser igual o posterior al día en que empieza.'; err.hidden = false; return; }
   m.id = editing || ('m' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
   const prev = editing && S.meds.find(x => x.id === editing);
   if (prev){
     m.reminderIds = prev.reminderIds || [];
-    const keys = ['name','dose','times','freq','every','days','start','end','notes'];
+    const keys = ['name','dose','times','freq','every','days','start','end','notes','hours','first','durDays'];
     const changed = keys.some(k => JSON.stringify(prev[k] ?? '') !== JSON.stringify(m[k] ?? ''));
     m.remindersStale = !!prev.remindersStale || (m.reminderIds.length > 0 && changed);
     m.remindersPending = !!prev.remindersPending;
