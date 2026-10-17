@@ -567,7 +567,7 @@ function localApi(){
   try { const raw = localStorage.getItem(KEY); if (raw) data = { ...data, ...JSON.parse(raw) }; } catch(e){}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ meds: S.allMeds, pet: S.rootPet, logs: S.logs, profiles: Object.fromEntries(Object.entries(S.profiles).filter(([k, v]) => !v._draft)), weights: S.allWeights })); } catch(e){} return Promise.resolve(); };
   return {
-    label: 'Guardado en este teléfono. Versión 4.1.',
+    label: 'Guardado en este teléfono. Versión 5.',
     start(){ S.allMeds = data.meds || []; S.rootPet = data.pet || ''; S.logs = data.logs || {}; S.profiles = data.profiles || (data.profile ? { main: data.profile } : {}); S.allWeights = (data.weights || []).map(w => ({ id: w.id || w.date, ...w })); S.ready = true; S.logsReady = true; render(); },
     saveMed: save, delMed: save, setPet: save, setDoses: save, saveProfile: save, delProfile: save, setWeight: save, delWeight: save,
     canImport: true,
@@ -586,6 +586,7 @@ async function init(){
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
   $('#sync').textContent = api.label;
   api.start();
+  readQueuedActs(); ensurePush();
 }
 function showBanner(t){ const b = $('#banner'); b.textContent = t; b.hidden = !t; }
 const fail = () => showBanner('No se pudo guardar el último cambio. Revisa tu conexión e inténtalo de nuevo.');
@@ -770,6 +771,7 @@ function render(){
   }
   if (S.tab === 'today') renderToday(); else if (S.tab === 'meds') renderMeds(); else renderPet();
   checkDue();
+  schedulePushSync();
 }
 
 /* ---------- Perfil ---------- */
@@ -1007,6 +1009,9 @@ function notifStatus(){
   if (IS_IOS && !isInstalled()) return { s: 'web', txt: 'Primero instala Pastipet en tu pantalla de inicio. En iPhone, los avisos y el número en el ícono solo funcionan en la app instalada.' };
   if (!canNotify()) return { s: 'no', txt: IS_IOS ? 'Este iPhone no permite avisos en apps web. Necesita iOS 16.4 o superior (Ajustes, General, Actualización de software).' : 'Este navegador no permite avisos. Abre Pastipet en Chrome.' };
   const p = notifPerm();
+  if (p === 'granted' && S.pushOn) return { s: 'on', txt: IS_IOS
+    ? 'Activados. Te aviso cuando le toque una dosis aunque Pastipet esté cerrada, y el ícono muestra cuántas dosis faltan hoy.'
+    : 'Activados. Te aviso cuando le toque una dosis aunque Pastipet esté cerrada, con sonido, vibración y los botones «Marcar como dada» y «En 15 min».' };
   if (p === 'granted') return { s: 'on', txt: IS_IOS
     ? 'Activados. Cuando le toque una dosis verás el aviso, y al salir de la app el ícono muestra cuántas dosis faltan hoy.'
     : IS_ANDROID ? 'Activados. Cuando le toque una dosis verás el aviso con sonido y vibración, con los botones «Marcar como dada» y «En 15 min». El ícono muestra un punto mientras haya un aviso.'
@@ -1024,7 +1029,7 @@ function notifLimit(){
 async function enableNotifs(){
   try {
     const r = await Notification.requestPermission();
-    if (r === 'granted'){ lastIconBadge = -1; updateIconBadge(); toast('Avisos activados'); vib(); }
+    if (r === 'granted'){ lastIconBadge = -1; updateIconBadge(); toast('Avisos activados'); vib(); ensurePush(); }
   } catch(e){}
   render();
 }
@@ -1037,6 +1042,15 @@ async function sysNotify(title, body, tag, data){
       actions: dose ? [{ action: 'give', title: 'Marcar como dada' }, { action: 'later', title: 'En 15 min' }] : [] });
     return true;
   } catch(e){ return false; }
+}
+async function testPush(){
+  if (!pushSub) return testNotif();
+  try {
+    const r = await fetch(PUSH_URL + '/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: deviceId() }) });
+    if (!r.ok) throw 0;
+    showBanner('');
+    toast('Listo. Cierra Pastipet: el aviso llega en 1 o 2 minutos');
+  } catch(e){ toast('No se pudo conectar con el servidor de avisos'); }
 }
 async function testNotif(){
   const ok = await sysNotify('Pastipet', `Así se verán los avisos de las dosis de ${S.pet || 'tu mascota'}.`, 'test', {});
@@ -1053,7 +1067,7 @@ function notifiedMap(){ try { return JSON.parse(localStorage.getItem(NOTIFIED_KE
 function saveNotified(o){ const t = today(); for (const k in o) if (!k.startsWith(t + '|')) delete o[k]; try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(o)); } catch(e){} }
 function forgetNotified(key){ const o = notifiedMap(); for (const k in o) if (k.split('|')[1] === key) delete o[k]; saveNotified(o); }
 function notifyDue(list){
-  if (!list.length || document.visibilityState !== 'hidden' || notifPerm() !== 'granted' || !canNotify()) return;
+  if (S.pushOn || !list.length || document.visibilityState !== 'hidden' || notifPerm() !== 'granted' || !canNotify()) return;
   const t = today(), n = nowMins(), o = notifiedMap(); let ch = false;
   list.forEach(e => {
     const late = n >= minsOf(e.t) + LEAD_MIN, id = `${t}|${e.key}|${late ? 'late' : 'pre'}`;
@@ -1098,10 +1112,78 @@ function runActions(){
     if (a.action === 'new'){ setTimeout(() => openForm(null), 50); return; }
     S.tab = 'today'; S.sel = t;
     if (!a.key || (a.date && a.date !== t)) return;
-    if (a.action === 'give'){ if (!(S.logs[t] || {})[a.key]) toggleDose(t, a.key); toast('Dosis marcada'); }
-    else if (a.action === 'later'){ loadSnooze(); snoozeMem[t + '|' + a.key] = Date.now() + SNOOZE_MS; saveSnooze(); forgetNotified(a.key); toast('Te aviso de nuevo en 15 minutos'); }
+    if (a.action === 'give'){ if (!(S.logs[t] || {})[a.key]) toggleDose(t, a.key); if (!a.quiet) toast('Dosis marcada'); }
+    else if (a.action === 'later'){ loadSnooze(); snoozeMem[t + '|' + a.key] = a.until || Date.now() + SNOOZE_MS; saveSnooze(); forgetNotified(a.key); if (!a.quiet) toast('Te aviso de nuevo en 15 minutos'); }
   });
   render();
+}
+
+
+/* ---------- Avisos con la app cerrada (servidor de avisos en Cloudflare) ---------- */
+const PUSH_URL = 'https://pastipet-avisos.antonio-ustd.workers.dev';
+const DEV_KEY = 'pastipet.device.v1', SIG_KEY = 'pastipet.pushsig.v1', CFG_CACHE = 'pastipet-cfg';
+const pushCapable = () => !!PUSH_URL && !PUSH_URL.includes('__') && 'serviceWorker' in navigator && 'PushManager' in window && canNotify();
+function deviceId(){
+  let v = '';
+  try { v = localStorage.getItem(DEV_KEY) || ''; if (!v){ v = (crypto.randomUUID ? crypto.randomUUID() : 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12)); localStorage.setItem(DEV_KEY, v); } } catch(e){}
+  return v;
+}
+const ub64 = s => { s = s.trim().replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return Uint8Array.from(atob(s), c => c.charCodeAt(0)); };
+let pushSub = null;
+async function ensurePush(){
+  if (!pushCapable() || notifPerm() !== 'granted' || !deviceId()) return null;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub){
+      const r = await fetch(PUSH_URL + '/key'); if (!r.ok) throw 0;
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: ub64(await r.text()) });
+      try { localStorage.removeItem(SIG_KEY); } catch(e){}
+    }
+    pushSub = sub;
+    try { const c = await caches.open(CFG_CACHE); await c.put('cfg', new Response(JSON.stringify({ id: deviceId(), url: PUSH_URL }))); } catch(e){}
+    if (!S.pushOn){ S.pushOn = true; render(); }
+    schedulePushSync();
+    return sub;
+  } catch(e){ return null; }
+}
+/* Avisos de los próximos 7 días: 5 min antes de la dosis y 5 min después si no está marcada */
+function pushEvents(){
+  const out = [], now = Date.now(), t = today(), sn = loadSnooze();
+  for (let i = 0; i < 7; i++){
+    const d = addDays(t, i), log = S.logs[d] || {}, [y, mo, da] = d.split('-').map(Number);
+    dayEntriesFor(S.allMeds, d).filter(e => !log[e.key]).forEach(e => {
+      const [h, mi] = e.t.split(':').map(Number), base = new Date(y, mo - 1, da, h, mi).getTime();
+      const pet = petName(petOf(e.m)) || 'tu mascota', what = `${e.m.name}${e.m.dose ? ', ' + e.m.dose : ''}`;
+      const snz = d === t ? sn[t + '|' + e.key] || 0 : 0;
+      [['pre', base - LEAD_MIN * 60000, `Le toca a ${pet}`, `${what}, a las ${e.t}.`],
+       ['late', base + LEAD_MIN * 60000, `¿Ya le diste ${e.m.name} a ${pet}?`, `Era a las ${e.t}.`]].forEach(([kind, at, title, body]) => {
+        if (at > now + 20000 && !(snz > now && at < snz)) out.push({ key: e.key, date: d, kind, at, title, body });
+      });
+      if (snz > now + 20000) out.push({ key: e.key, date: d, kind: 'snz', at: snz, title: `¿Ya le diste ${e.m.name} a ${pet}?`, body: `Era a las ${e.t}.` });
+    });
+  }
+  return out.slice(0, 400);
+}
+let pushT = null;
+function schedulePushSync(){ if (!pushSub) return; clearTimeout(pushT); pushT = setTimeout(syncPush, 1200); }
+async function syncPush(){
+  if (!pushSub || !api || !S.ready || !S.logsReady) return;
+  const events = pushEvents(), sig = pushSub.endpoint + JSON.stringify(events.map(e => [e.key, e.date, e.kind, e.at, e.title, e.body]));
+  let last = ''; try { last = localStorage.getItem(SIG_KEY) || ''; } catch(e){}
+  if (sig === last) return;
+  try {
+    const r = await fetch(PUSH_URL + '/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: deviceId(), sub: pushSub.toJSON(), events }) });
+    if (r.ok){ try { localStorage.setItem(SIG_KEY, sig); } catch(e){} }
+  } catch(e){}
+}
+/* Acciones tocadas en un aviso con la app cerrada: el aviso las deja anotadas y aquí se aplican */
+async function readQueuedActs(){
+  try {
+    const c = await caches.open(CFG_CACHE), r = await c.match('acts'); if (!r) return;
+    const list = await r.json(); await c.delete('acts');
+    if (Array.isArray(list) && list.length){ list.forEach(a => pendingActs.push({ ...a, quiet: true })); runActions(); }
+  } catch(e){}
 }
 
 /* Compartir */
@@ -1125,12 +1207,13 @@ function updateIconBadge(){
 
 /* Tarjeta en el perfil */
 function appSettings(){
+  if (!PHONE) return ''; // en el computador no se muestra
   const ins = isInstalled(), st = notifStatus(), where = PHONE ? `tu ${PHONE}` : 'tu equipo';
   const inst = ins ? `<p class="ok">Instalada. Ábrela siempre desde su ícono.</p>`
     : installEvt ? `<p class="muted">Ábrela como una app: a pantalla completa, desde su ícono y sin internet.</p><div><button class="btn small" data-install>Instalar Pastipet</button></div>`
     : `<p class="muted">${esc(installHow())}</p>`;
   const avisos = `<p class="${st.s === 'on' ? 'ok' : 'muted'}">${esc(st.txt)}</p>`
-    + (st.s === 'on' ? `<p class="muted lim">${esc(notifLimit())}</p><div><button class="btn ghost small" data-testnotif>Probar un aviso</button></div>`
+    + (st.s === 'on' ? `${S.pushOn ? '' : `<p class="muted lim">${esc(notifLimit())}</p>`}<div class="row"><button class="btn ghost small" data-testnotif>Probar un aviso</button>${S.pushOn ? '<button class="btn ghost small" data-testpush>Probar con la app cerrada</button>' : ''}</div>`
       : st.s === 'ask' ? `<div><button class="btn small" data-notif>Activar avisos</button></div>` : '');
   return `<div class="card"><h2>Pastipet en ${where}</h2>
     <div class="set"><b>App en la pantalla de inicio</b>${inst}</div>
@@ -1140,7 +1223,7 @@ function appSettings(){
 }
 /* Sugerencia en Hoy: primero instalar, luego activar avisos */
 function badgeCard(){
-  if (!S.ready) return '';
+  if (!S.ready || !PHONE) return '';
   if (!isInstalled() && (IS_IOS || IS_ANDROID || installEvt) && !tipHidden('install'))
     return `<div class="note"><b>Instala Pastipet en ${PHONE ? 'tu ' + PHONE : 'tu equipo'}</b>${installEvt ? 'Ábrela como una app, a pantalla completa y sin internet.' : esc(installHow())}
       <div class="row" style="margin-top:8px">${installEvt ? '<button class="btn small" data-install>Instalar</button>' : ''}<button class="btn text" data-hide="install">Ahora no</button></div></div>`;
@@ -1193,7 +1276,7 @@ function giveFromPopup(key){
   if ($('#duepop').hidden) toast('Dosis marcada');
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && api){ lastIconBadge = -1; closeNotifs(); render(); checkDue();
+  if (document.visibilityState === 'visible' && api){ lastIconBadge = -1; closeNotifs(); readQueuedActs(); ensurePush(); render(); checkDue();
     try { navigator.serviceWorker && navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}); } catch(e){} }
   else if (document.visibilityState === 'hidden'){ lastIconBadge = -1; updateIconBadge(); }
 });
@@ -1374,6 +1457,7 @@ document.addEventListener('click', e => {
   else if (b.hasAttribute('data-notif') || b.hasAttribute('data-iconbadge')) enableNotifs();
   else if (b.hasAttribute('data-install')) doInstall();
   else if (b.hasAttribute('data-testnotif')) testNotif();
+  else if (b.hasAttribute('data-testpush')) testPush();
   else if (b.hasAttribute('data-share')) shareApp();
   else if (b.dataset.hide) hideTip(b.dataset.hide);
   else if (b.hasAttribute('data-backup')) downloadBackup();
